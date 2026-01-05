@@ -40,47 +40,50 @@ def transcribir_audio(audio_file_path: str) -> Optional[str]:
 
 def extraer_info_gasto(texto: str, categorias: list = None) -> Dict:
     """
-    Extrae concepto, valor y categoría de un texto usando GPT.
-    Ejemplo: "Gasolina cincuenta mil pesos" -> {concepto: "Gasolina", valor: 50000, categoria: "Gasolina"}
+    Extrae concepto y valor de un texto usando GPT.
+    El concepto debe incluir el nombre del lugar si se menciona.
+    Ejemplo: "Almuerzo en Crepes cuarenta mil" -> {concepto: "Almuerzo en Crepes", valor: 40000}
     """
     try:
         client = get_openai_client()
         if not client:
             return {"concepto": texto, "valor": 0, "categoria": None}
         
-        # Crear lista de categorías disponibles
-        cat_list = ""
-        if categorias:
-            cat_nombres = [c.get('nombre', '').split(' ', 1)[-1] if ' ' in c.get('nombre', '') else c.get('nombre', '') for c in categorias]
-            cat_list = f"Categorías disponibles: {', '.join(cat_nombres)}"
-        
         prompt = f"""Analiza el siguiente texto que describe un gasto y extrae la información.
 El texto está en español y puede contener números escritos en palabras.
 
 Texto: "{texto}"
 
-{cat_list}
+IMPORTANTE: El concepto debe incluir el nombre del lugar/restaurante/establecimiento si se menciona.
 
 Responde SOLO con un JSON válido con esta estructura exacta:
 {{
-    "concepto": "descripción breve del gasto",
+    "concepto": "descripción del gasto INCLUYENDO el nombre del lugar si se menciona",
     "valor": número entero en pesos colombianos (sin puntos ni comas),
-    "categoria": "nombre de la categoría más apropiada o null si no aplica"
+    "categoria": null
 }}
 
-Ejemplos de conversión de números:
+Ejemplos:
+- "Almuerzo en Crepes cuarenta mil" -> concepto: "Almuerzo en Crepes & Waffles", valor: 40000
+- "Café en Juan Valdez quince mil" -> concepto: "Café en Juan Valdez", valor: 15000
+- "Gasolina cincuenta mil" -> concepto: "Gasolina", valor: 50000
+- "Uber al aeropuerto treinta mil" -> concepto: "Uber al aeropuerto", valor: 30000
+
+Conversión de números:
 - "mil" = 1000
-- "dos mil" = 2000
+- "cinco mil" = 5000
 - "diez mil" = 10000
+- "quince mil" = 15000
 - "veinte mil" = 20000
+- "veinticinco mil" = 25000
 - "treinta mil" = 30000
+- "treinta y cinco mil" = 35000
 - "cuarenta mil" = 40000
 - "cincuenta mil" = 50000
 - "cien mil" = 100000
-- "doscientos mil" = 200000
 
 Si no puedes determinar el valor, usa 0.
-Si el texto menciona un valor como "50k" o "50 lucas", interpreta que son miles de pesos."""
+Si el texto menciona "50k" o "50 lucas", interpreta que son miles de pesos."""
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",

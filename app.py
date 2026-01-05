@@ -709,55 +709,32 @@ def mostrar_gastos(paseo_id, usuario_id):
         if 'transcripcion_temp' in st.session_state and st.session_state['transcripcion_temp']:
             concepto_ext = st.session_state.get('concepto_extraido', '')
             valor_ext = st.session_state.get('valor_extraido', 0)
-            cat_ext = st.session_state.get('categoria_extraida', 'No detectada')
             
             st.markdown(f"""
             <div style='background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); 
                         border-radius: 12px; padding: 1rem; margin: 0.5rem 0;'>
-                <p style='color: #10b981; font-weight: 600; margin: 0 0 0.5rem 0;'>🤖 Información extraída automáticamente:</p>
-                <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;'>
+                <p style='color: #10b981; font-weight: 600; margin: 0 0 0.5rem 0;'>🤖 Información extraída:</p>
+                <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;'>
                     <div>
                         <span style='color: #94a3b8; font-size: 0.75rem;'>📝 Concepto:</span>
-                        <p style='color: #f8fafc; margin: 0; font-weight: 500;'>{concepto_ext}</p>
+                        <p style='color: #f8fafc; margin: 0; font-weight: 600; font-size: 1.1rem;'>{concepto_ext}</p>
                     </div>
-                    <div>
+                    <div style='text-align: right;'>
                         <span style='color: #94a3b8; font-size: 0.75rem;'>💵 Valor:</span>
-                        <p style='color: #10b981; margin: 0; font-weight: 700;'>${valor_ext:,.0f} COP</p>
-                    </div>
-                    <div>
-                        <span style='color: #94a3b8; font-size: 0.75rem;'>🏷️ Categoría:</span>
-                        <p style='color: #f8fafc; margin: 0;'>{cat_ext or 'No detectada'}</p>
-                    </div>
-                    <div>
-                        <span style='color: #94a3b8; font-size: 0.75rem;'>🎤 Transcripción:</span>
-                        <p style='color: #94a3b8; margin: 0; font-style: italic; font-size: 0.85rem;'>"{st.session_state['transcripcion_temp']}"</p>
+                        <p style='color: #10b981; margin: 0; font-weight: 700; font-size: 1.3rem;'>${valor_ext:,.0f}</p>
                     </div>
                 </div>
+                <p style='color: #64748b; margin: 0.5rem 0 0 0; font-style: italic; font-size: 0.8rem;'>🎤 "{st.session_state['transcripcion_temp']}"</p>
             </div>
             """, unsafe_allow_html=True)
-            st.info("💡 Los campos arriba se llenaron automáticamente. Puedes editarlos si es necesario.")
     
     elif tipo_gasto == "Foto":
         archivo_subido = st.file_uploader("📸 Subir foto del gasto", type=["jpg", "jpeg", "png"], key="foto_upload")
         if archivo_subido:
             st.image(archivo_subido, width=300)
     
-    # Campo de lugar/categoría personalizado
-    st.markdown("### 🏷️ Lugar")
-    categoria_extraida = st.session_state.get('categoria_extraida', '')
-    lugar_nombre = st.text_input(
-        "Nombre del lugar", 
-        value=categoria_extraida or "",
-        placeholder="Ej: Restaurante El Corral, Café Juan Valdez...",
-        key="lugar_input"
-    )
-    
-    # Si hay nombre de lugar, se creará como categoría
-    if lugar_nombre:
-        categoria_id = "nueva"
-        st.session_state['nueva_categoria_nombre'] = lugar_nombre
-    else:
-        categoria_id = None
+    # Sin categorías - la información del lugar va en el concepto
+    categoria_id = None
     
     # División del gasto (antes de guardar)
     st.markdown("### 👥 Dividir Gasto")
@@ -806,23 +783,13 @@ def mostrar_gastos(paseo_id, usuario_id):
             # Usar transcripción si existe
             transcripcion_final = st.session_state.get('transcripcion_temp', None)
             
-            # Crear nueva categoría si es necesario
-            categoria_id_final = categoria_id
-            if categoria_id == "nueva" and 'nueva_categoria_nombre' in st.session_state:
-                nueva_cat = st.session_state['nueva_categoria_nombre']
-                # Crear la categoría con icono y color por defecto
-                categoria_id_final = db.crear_categoria(paseo_id, f"🏷️ {nueva_cat}", "🏷️", "#6366f1")
-                if categoria_id_final == -1:
-                    categoria_id_final = None
-                del st.session_state['nueva_categoria_nombre']
-            
             gasto_id = db.crear_gasto(
                 paseo_id, usuario_id, concepto, valor,
                 datetime.combine(fecha, datetime.min.time()),
                 tipo_archivo_final,
                 archivo_path,
                 transcripcion_final,
-                categoria_id_final if categoria_id_final != "nueva" else None
+                None  # Sin categorías - la info del lugar va en el concepto
             )
             
             # Crear divisiones
