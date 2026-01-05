@@ -605,7 +605,8 @@ def mostrar_gastos(paseo_id, usuario_id):
         st.session_state['tipo_gasto_anterior'] = tipo_gasto
     if st.session_state['tipo_gasto_anterior'] != tipo_gasto:
         # Limpiar todos los valores temporales al cambiar tipo
-        keys_to_clear = ['transcripcion_temp', 'concepto_extraido', 'valor_extraido', 'categoria_extraida', 'audio_temp']
+        keys_to_clear = ['transcripcion_temp', 'concepto_extraido', 'valor_extraido', 'categoria_extraida', 
+                        'audio_temp', 'audio_procesado_size', 'archivo_procesado_size', 'nueva_categoria_nombre']
         for key in keys_to_clear:
             if key in st.session_state:
                 del st.session_state[key]
@@ -636,32 +637,34 @@ def mostrar_gastos(paseo_id, usuario_id):
             
             if audio_grabado:
                 st.audio(audio_grabado)
-                st.success("✅ Audio grabado correctamente")
                 
-                if st.button("🔄 Transcribir y Extraer Info", key="btn_transcribir_grabado"):
-                    with st.spinner("🎯 Transcribiendo y analizando audio..."):
+                # Verificar si ya procesamos este audio
+                audio_bytes = audio_grabado.getvalue()
+                audio_size = len(audio_bytes)
+                
+                if st.session_state.get('audio_procesado_size') != audio_size:
+                    # Audio nuevo - procesar automáticamente
+                    with st.spinner("🤖 Procesando audio automáticamente..."):
                         # Guardar temporalmente
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                            tmp_file.write(audio_grabado.getvalue())
+                            tmp_file.write(audio_bytes)
                             tmp_path = tmp_file.name
                         
-                        # Obtener categorías para el análisis
-                        categorias_audio = db.get_categorias_paseo(paseo_id)
-                        
                         # Transcribir y extraer información
-                        resultado = transcribir_y_extraer(tmp_path, categorias_audio)
+                        resultado = transcribir_y_extraer(tmp_path, None)
                         
                         if resultado:
-                            st.success("✅ Audio procesado exitosamente")
                             st.session_state['transcripcion_temp'] = resultado['transcripcion']
                             st.session_state['concepto_extraido'] = resultado['concepto']
                             st.session_state['valor_extraido'] = resultado['valor']
                             st.session_state['categoria_extraida'] = resultado['categoria']
-                            st.session_state['audio_temp'] = audio_grabado.getvalue()
+                            st.session_state['audio_temp'] = audio_bytes
+                            st.session_state['audio_procesado_size'] = audio_size
+                            os.unlink(tmp_path)
                             st.rerun()
                         else:
                             st.error("❌ Error al procesar el audio")
-                        os.unlink(tmp_path)
+                            os.unlink(tmp_path)
                 
                 # Guardar audio grabado para usar después
                 archivo_subido = audio_grabado
@@ -674,30 +677,33 @@ def mostrar_gastos(paseo_id, usuario_id):
                 st.audio(archivo_subido_file)
                 archivo_subido = archivo_subido_file
                 
-                if st.button("🔄 Transcribir y Extraer Info", key="btn_transcribir_archivo"):
-                    with st.spinner("🎯 Transcribiendo y analizando audio..."):
+                # Verificar si ya procesamos este archivo
+                file_bytes = archivo_subido_file.getvalue()
+                file_size = len(file_bytes)
+                
+                if st.session_state.get('archivo_procesado_size') != file_size:
+                    # Archivo nuevo - procesar automáticamente
+                    with st.spinner("🤖 Procesando audio automáticamente..."):
                         # Guardar temporalmente
                         with tempfile.NamedTemporaryFile(delete=False, suffix=f".{archivo_subido_file.name.split('.')[-1]}") as tmp_file:
-                            tmp_file.write(archivo_subido_file.getvalue())
+                            tmp_file.write(file_bytes)
                             tmp_path = tmp_file.name
                         
-                        # Obtener categorías para el análisis
-                        categorias_audio = db.get_categorias_paseo(paseo_id)
-                        
                         # Transcribir y extraer información
-                        resultado = transcribir_y_extraer(tmp_path, categorias_audio)
+                        resultado = transcribir_y_extraer(tmp_path, None)
                         
                         if resultado:
-                            st.success("✅ Audio procesado exitosamente")
                             st.session_state['transcripcion_temp'] = resultado['transcripcion']
                             st.session_state['concepto_extraido'] = resultado['concepto']
                             st.session_state['valor_extraido'] = resultado['valor']
                             st.session_state['categoria_extraida'] = resultado['categoria']
-                            st.session_state['audio_temp'] = archivo_subido_file.getvalue()
+                            st.session_state['audio_temp'] = file_bytes
+                            st.session_state['archivo_procesado_size'] = file_size
+                            os.unlink(tmp_path)
                             st.rerun()
                         else:
                             st.error("❌ Error al procesar el audio")
-                        os.unlink(tmp_path)
+                            os.unlink(tmp_path)
         
         # Mostrar información extraída si existe
         if 'transcripcion_temp' in st.session_state and st.session_state['transcripcion_temp']:
@@ -736,52 +742,22 @@ def mostrar_gastos(paseo_id, usuario_id):
         if archivo_subido:
             st.image(archivo_subido, width=300)
     
-    # Selector de categoría
-    st.markdown("### 🏷️ Categoría")
-    categorias = db.get_categorias_paseo(paseo_id)
+    # Campo de lugar/categoría personalizado
+    st.markdown("### 🏷️ Lugar")
+    categoria_extraida = st.session_state.get('categoria_extraida', '')
+    lugar_nombre = st.text_input(
+        "Nombre del lugar", 
+        value=categoria_extraida or "",
+        placeholder="Ej: Restaurante El Corral, Café Juan Valdez...",
+        key="lugar_input"
+    )
     
-    col_cat1, col_cat2 = st.columns([3, 2])
-    
-    with col_cat1:
-        if categorias:
-            cat_opciones = {f"{c['icono']} {c['nombre'].split(' ', 1)[-1] if ' ' in c['nombre'] else c['nombre']}": c['id'] for c in categorias}
-            cat_opciones_lista = list(cat_opciones.keys()) + ["✏️ Escribir nueva..."]
-            
-            # Buscar índice de categoría extraída automáticamente
-            categoria_extraida = st.session_state.get('categoria_extraida', None)
-            indice_default = 0
-            
-            if categoria_extraida:
-                for i, cat_nombre in enumerate(cat_opciones_lista[:-1]):
-                    if categoria_extraida.lower() in cat_nombre.lower():
-                        indice_default = i
-                        break
-            
-            categoria_seleccionada = st.selectbox(
-                "Selecciona o escribe una categoría",
-                options=cat_opciones_lista,
-                index=indice_default,
-                key="categoria_selector"
-            )
-        else:
-            categoria_seleccionada = "✏️ Escribir nueva..."
-    
-    with col_cat2:
-        # Campo para nueva categoría personalizada
-        if categoria_seleccionada == "✏️ Escribir nueva...":
-            nueva_cat_nombre = st.text_input("Nueva categoría", placeholder="Ej: Souvenirs", key="nueva_cat_rapida")
-        else:
-            nueva_cat_nombre = None
-    
-    # Determinar categoria_id
-    if categoria_seleccionada == "✏️ Escribir nueva..." and nueva_cat_nombre:
-        # Se creará la categoría al guardar el gasto
+    # Si hay nombre de lugar, se creará como categoría
+    if lugar_nombre:
         categoria_id = "nueva"
-        st.session_state['nueva_categoria_nombre'] = nueva_cat_nombre
-    elif categoria_seleccionada == "✏️ Escribir nueva...":
-        categoria_id = None
+        st.session_state['nueva_categoria_nombre'] = lugar_nombre
     else:
-        categoria_id = cat_opciones.get(categoria_seleccionada) if categorias else None
+        categoria_id = None
     
     # División del gasto (antes de guardar)
     st.markdown("### 👥 Dividir Gasto")
@@ -862,7 +838,8 @@ def mostrar_gastos(paseo_id, usuario_id):
             
             # Limpiar estado temporal
             keys_to_clear = ['transcripcion_temp', 'tipo_gasto_anterior', 'audio_temp', 
-                           'concepto_extraido', 'valor_extraido', 'categoria_extraida', 'nueva_categoria_nombre']
+                           'concepto_extraido', 'valor_extraido', 'categoria_extraida', 'nueva_categoria_nombre',
+                           'audio_procesado_size', 'archivo_procesado_size']
             for key in keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
