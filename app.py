@@ -731,27 +731,42 @@ def mostrar_gastos(paseo_id, usuario_id):
     # Sin categorías - la información del lugar va en el concepto
     categoria_id = None
     
-    # División del gasto (antes de guardar)
-    st.markdown("### 👥 Dividir Gasto")
+    # División del gasto - seleccionar participantes
+    st.markdown("### 👥 ¿Entre quiénes se divide?")
     participantes = db.get_participantes_paseo(paseo_id)
+    
+    # Checkboxes para seleccionar participantes (todos marcados por defecto)
+    participantes_seleccionados = []
+    cols = st.columns(min(len(participantes), 3))
+    for i, participante in enumerate(participantes):
+        with cols[i % 3]:
+            if st.checkbox(participante['nombre'], value=True, key=f"check_{participante['id']}"):
+                participantes_seleccionados.append(participante['id'])
+    
+    # Calcular división automática en partes iguales
     divisiones = {}
-    total_porcentaje = 0
+    if participantes_seleccionados:
+        porcentaje_cada_uno = 100 // len(participantes_seleccionados)
+        resto = 100 % len(participantes_seleccionados)
+        for i, pid in enumerate(participantes_seleccionados):
+            # El primero recibe el resto para que sume 100%
+            divisiones[pid] = porcentaje_cada_uno + (resto if i == 0 else 0)
+        
+        # Mostrar división
+        if valor > 0:
+            st.markdown(f"""
+            <div style='background: rgba(16,185,129,0.1); border-radius: 8px; padding: 10px; margin-top: 10px;'>
+                <p style='color: #a7f3d0; margin: 0; font-size: 0.85rem;'>
+                    💰 Cada uno paga: <strong>${valor/len(participantes_seleccionados):,.0f}</strong> 
+                    ({len(participantes_seleccionados)} personas)
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
     
-    for participante in participantes:
-        porcentaje_default = 100 // len(participantes) if len(participantes) > 0 else 100
-        porcentaje = st.slider(
-            f"{participante['nombre']} (%)",
-            0, 100, porcentaje_default,
-            key=f"div_{participante['id']}"
-        )
-        divisiones[participante['id']] = porcentaje
-        total_porcentaje += porcentaje
-    
-    if total_porcentaje != 100:
-        st.warning(f"⚠️ El total debe ser 100% (actual: {total_porcentaje}%)")
+    total_porcentaje = sum(divisiones.values()) if divisiones else 0
     
     if st.button("💾 Guardar Gasto", key="btn_guardar_gasto"):
-        if concepto and valor > 0 and total_porcentaje == 100:
+        if concepto and valor > 0 and len(participantes_seleccionados) > 0:
             # Guardar archivo si existe
             archivo_path = None
             tipo_archivo_final = None
@@ -813,8 +828,8 @@ def mostrar_gastos(paseo_id, usuario_id):
                 st.error("Por favor ingresa un concepto")
             elif valor <= 0:
                 st.error("El valor debe ser mayor a 0")
-            elif total_porcentaje != 100:
-                st.error("La división debe sumar exactamente 100%")
+            elif len(participantes_seleccionados) == 0:
+                st.error("Selecciona al menos un participante")
     
     # Lista de gastos
     st.markdown("---")
