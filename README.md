@@ -2,6 +2,8 @@
 
 Aplicación web móvil para gestionar gastos y cobros de paseos entre amigos, desarrollada con Streamlit.
 
+**Repositorio:** [https://github.com/Andresporahi/paseos](https://github.com/Andresporahi/paseos)
+
 ## Características
 
 - 📱 **Diseño móvil responsive** con colores vivos y degradados modernos
@@ -15,14 +17,20 @@ Aplicación web móvil para gestionar gastos y cobros de paseos entre amigos, de
 
 ## Instalación
 
-1. Clona o descarga este repositorio
+1. Clona el repositorio:
+```bash
+git clone https://github.com/Andresporahi/paseos.git
+cd paseos
+```
 
 2. Instala las dependencias:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Configura la API key de OpenAI en `.streamlit/secrets.toml`:
+3. Configura la API key de OpenAI:
+   - Copia el archivo template: `cp .streamlit/secrets.toml.example .streamlit/secrets.toml`
+   - Edita `.streamlit/secrets.toml` y agrega tu API key:
 ```toml
 openai_api_key = "tu-api-key-aqui"
 ```
