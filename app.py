@@ -14,140 +14,397 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS personalizado con colores vivos y degradados
+# CSS personalizado ultra moderno con colores vivos
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
     
-    * {
-        font-family: 'Poppins', sans-serif;
+    :root {
+        --primary: #6366f1;
+        --secondary: #ec4899;
+        --accent: #14b8a6;
+        --warning: #f59e0b;
+        --success: #10b981;
+        --danger: #ef4444;
+        --dark: #0f172a;
+        --light: #f8fafc;
     }
     
-    .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
+    * {
+        font-family: 'Space Grotesk', sans-serif !important;
     }
     
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(160deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
     }
     
-    .card {
-        background: white;
-        border-radius: 20px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    .main .block-container {
+        padding: 0.5rem 1rem !important;
+        max-width: 100% !important;
     }
     
-    .card-header {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-        color: white;
-        padding: 1rem;
-        border-radius: 15px;
-        margin: -1.5rem -1.5rem 1rem -1.5rem;
+    /* Header principal */
+    .main-header {
+        background: linear-gradient(135deg, #6366f1 0%, #ec4899 50%, #f59e0b 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-size: 2.5rem;
         font-weight: 700;
-        font-size: 1.2rem;
+        text-align: center;
+        margin-bottom: 0.5rem;
     }
     
-    .card-success {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    .sub-header {
+        color: #94a3b8;
+        text-align: center;
+        font-size: 1rem;
+        margin-bottom: 1rem;
     }
     
-    .card-warning {
-        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+    /* Tarjetas modernas */
+    .modern-card {
+        background: linear-gradient(145deg, rgba(30,27,75,0.9) 0%, rgba(49,46,129,0.8) 100%);
+        border: 1px solid rgba(99,102,241,0.3);
+        border-radius: 16px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
     
-    .card-info {
-        background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+    .modern-card-glow {
+        background: linear-gradient(145deg, rgba(30,27,75,0.95) 0%, rgba(49,46,129,0.9) 100%);
+        border: 1px solid rgba(236,72,153,0.5);
+        border-radius: 16px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        box-shadow: 0 0 20px rgba(236,72,153,0.2), 0 8px 32px rgba(0,0,0,0.3);
     }
     
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        padding: 0.75rem 2rem;
-        border-radius: 25px;
+    /* Badges de estado */
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
         font-weight: 600;
-        cursor: pointer;
-        transition: transform 0.2s;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
-    .btn-primary:hover {
-        transform: scale(1.05);
+    .badge-primary {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        color: white;
     }
     
-    .gasto-item {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        padding: 1rem;
-        border-radius: 15px;
+    .badge-success {
+        background: linear-gradient(135deg, #10b981, #14b8a6);
+        color: white;
+    }
+    
+    .badge-warning {
+        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+        color: #0f172a;
+    }
+    
+    .badge-danger {
+        background: linear-gradient(135deg, #ef4444, #f87171);
+        color: white;
+    }
+    
+    /* Items de gastos */
+    .gasto-card {
+        background: linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(236,72,153,0.1) 100%);
+        border-left: 4px solid #6366f1;
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
         margin: 0.5rem 0;
-        border-left: 5px solid #667eea;
+        transition: all 0.3s ease;
     }
     
-    .deuda-item {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        padding: 1rem;
-        border-radius: 15px;
+    .gasto-card:hover {
+        transform: translateX(5px);
+        border-left-color: #ec4899;
+    }
+    
+    .gasto-valor {
+        font-size: 1.25rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #10b981, #14b8a6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .gasto-concepto {
+        color: #e2e8f0;
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    
+    .gasto-meta {
+        color: #94a3b8;
+        font-size: 0.8rem;
+    }
+    
+    /* Items de deudas */
+    .deuda-card {
+        background: linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(245,158,11,0.1) 100%);
+        border: 1px solid rgba(245,158,11,0.3);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
         margin: 0.5rem 0;
     }
     
+    .deuda-monto {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fbbf24;
+    }
+    
+    .deuda-texto {
+        color: #e2e8f0;
+        font-size: 0.9rem;
+    }
+    
+    /* Balance */
     .balance-positive {
-        color: #00c851;
+        background: linear-gradient(135deg, #10b981, #14b8a6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         font-weight: 700;
         font-size: 1.5rem;
     }
     
     .balance-negative {
-        color: #ff4444;
+        background: linear-gradient(135deg, #ef4444, #f87171);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
         font-weight: 700;
         font-size: 1.5rem;
     }
     
-    h1, h2, h3 {
-        color: white;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    /* Métricas compactas */
+    .metric-card {
+        background: linear-gradient(145deg, rgba(30,27,75,0.9) 0%, rgba(49,46,129,0.8) 100%);
+        border-radius: 12px;
+        padding: 0.75rem;
+        text-align: center;
+        border: 1px solid rgba(99,102,241,0.2);
     }
     
-    .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
+    .metric-value {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+    
+    .metric-label {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    /* Participantes */
+    .participant-chip {
+        display: inline-flex;
+        align-items: center;
+        background: linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2));
+        border: 1px solid rgba(139,92,246,0.4);
         border-radius: 25px;
-        padding: 0.5rem 1.5rem;
+        padding: 0.35rem 0.75rem;
+        margin: 0.2rem;
+        font-size: 0.85rem;
+        color: #e2e8f0;
+    }
+    
+    .participant-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #ec4899, #f59e0b);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.5rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: white;
+    }
+    
+    /* Textos */
+    h1, h2, h3 {
+        color: #f8fafc !important;
         font-weight: 600;
-        width: 100%;
     }
     
-    .stTextInput>div>div>input {
-        border-radius: 15px;
-        border: 2px solid #667eea;
+    h1 { font-size: 1.75rem !important; }
+    h2 { font-size: 1.25rem !important; }
+    h3 { font-size: 1rem !important; color: #cbd5e1 !important; }
+    
+    p, span, label, .stMarkdown {
+        color: #e2e8f0 !important;
     }
     
-    .stSelectbox>div>div>select {
-        border-radius: 15px;
-        border: 2px solid #667eea;
+    /* Botones */
+    .stButton > button {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 0.6rem 1.2rem !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(99,102,241,0.3) !important;
     }
     
-    .stDateInput>div>div>input {
-        border-radius: 15px;
-        border: 2px solid #667eea;
+    .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(99,102,241,0.4) !important;
     }
     
-    .stNumberInput>div>div>input {
-        border-radius: 15px;
-        border: 2px solid #667eea;
+    /* Inputs */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stDateInput > div > div > input {
+        background: rgba(30,27,75,0.8) !important;
+        border: 1px solid rgba(99,102,241,0.4) !important;
+        border-radius: 10px !important;
+        color: #f8fafc !important;
+        padding: 0.6rem !important;
     }
     
+    .stTextInput > div > div > input:focus,
+    .stNumberInput > div > div > input:focus {
+        border-color: #ec4899 !important;
+        box-shadow: 0 0 0 2px rgba(236,72,153,0.2) !important;
+    }
+    
+    .stSelectbox > div > div {
+        background: rgba(30,27,75,0.8) !important;
+        border: 1px solid rgba(99,102,241,0.4) !important;
+        border-radius: 10px !important;
+    }
+    
+    .stSelectbox > div > div > div {
+        color: #f8fafc !important;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background: rgba(30,27,75,0.6);
+        border-radius: 12px;
+        padding: 0.25rem;
+        gap: 0.25rem;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 10px;
+        color: #94a3b8;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+        color: white !important;
+    }
+    
+    /* Expanders */
+    .streamlit-expanderHeader {
+        background: rgba(30,27,75,0.6) !important;
+        border-radius: 10px !important;
+        color: #e2e8f0 !important;
+        font-weight: 500 !important;
+    }
+    
+    .streamlit-expanderContent {
+        background: rgba(30,27,75,0.4) !important;
+        border-radius: 0 0 10px 10px !important;
+    }
+    
+    /* Sliders */
+    .stSlider > div > div > div > div {
+        background: linear-gradient(135deg, #6366f1, #ec4899) !important;
+    }
+    
+    /* Sidebar */
+    .css-1d391kg, [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%) !important;
+    }
+    
+    /* File uploader */
+    .stFileUploader > div {
+        background: rgba(30,27,75,0.6) !important;
+        border: 2px dashed rgba(99,102,241,0.4) !important;
+        border-radius: 12px !important;
+    }
+    
+    /* Info boxes */
+    .stAlert {
+        background: rgba(30,27,75,0.8) !important;
+        border: 1px solid rgba(99,102,241,0.3) !important;
+        border-radius: 12px !important;
+        color: #e2e8f0 !important;
+    }
+    
+    /* Metrics de Streamlit */
+    [data-testid="stMetricValue"] {
+        color: #f8fafc !important;
+        font-weight: 700 !important;
+    }
+    
+    [data-testid="stMetricLabel"] {
+        color: #94a3b8 !important;
+    }
+    
+    /* Dividers */
+    hr {
+        border-color: rgba(99,102,241,0.2) !important;
+    }
+    
+    /* Responsive */
     @media (max-width: 768px) {
-        .main {
-            padding: 0.5rem;
+        .main .block-container {
+            padding: 0.25rem 0.5rem !important;
         }
         
-        .card {
-            padding: 1rem;
-            margin: 0.5rem 0;
+        h1 { font-size: 1.5rem !important; }
+        h2 { font-size: 1.1rem !important; }
+        
+        .metric-value { font-size: 1.1rem; }
+        
+        .gasto-card, .deuda-card {
+            padding: 0.6rem 0.8rem;
         }
+    }
+    
+    /* Animaciones sutiles */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .modern-card, .gasto-card, .deuda-card {
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    /* Scrollbar personalizada */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #1e1b4b;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-radius: 3px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -172,12 +429,16 @@ init_session_state()
 
 def login_page():
     """Página de login/registro"""
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([1, 3, 1])
     with col2:
-        st.markdown("<h1 style='text-align: center;'>🚗 Paseos</h1>", unsafe_allow_html=True)
-        st.markdown("<h2 style='text-align: center; color: white;'>Gastos Compartidos</h2>", unsafe_allow_html=True)
+        st.markdown("""
+        <div style='text-align: center; padding: 1rem 0;'>
+            <div class='main-header'>🚗 Paseos</div>
+            <p class='sub-header'>Divide gastos con tus amigos de forma fácil</p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        tab1, tab2 = st.tabs(["Iniciar Sesión", "Registrarse"])
+        tab1, tab2 = st.tabs(["🔐 Entrar", "✨ Crear Cuenta"])
         
         with tab1:
             st.markdown("### Iniciar Sesión")
@@ -216,11 +477,29 @@ def main_page():
     
     # Sidebar con información del usuario
     with st.sidebar:
-        st.markdown(f"### 👤 {usuario_nombre}")
-        usuario_info = db.get_usuario(usuario_id)
-        if usuario_info:
-            st.info(f"**Tu ID de Usuario:** {usuario_id}\n\nComparte este ID con tus amigos para que te agreguen a sus paseos.")
-        if st.button("Cerrar Sesión", key="btn_logout"):
+        inicial = usuario_nombre[0].upper() if usuario_nombre else "?"
+        st.markdown(f"""
+        <div style='text-align: center; padding: 1rem 0;'>
+            <div style='width: 60px; height: 60px; border-radius: 50%; 
+                        background: linear-gradient(135deg, #ec4899, #f59e0b); 
+                        display: flex; align-items: center; justify-content: center;
+                        margin: 0 auto 0.5rem; font-size: 1.5rem; font-weight: 700; color: white;'>
+                {inicial}
+            </div>
+            <h3 style='margin: 0; color: #f8fafc;'>{usuario_nombre}</h3>
+            <p style='color: #94a3b8; font-size: 0.85rem;'>ID: #{usuario_id}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div style='background: rgba(99,102,241,0.2); border-radius: 10px; padding: 0.75rem; margin: 0.5rem 0;'>
+            <p style='color: #e2e8f0; font-size: 0.8rem; margin: 0;'>
+                📤 Comparte tu ID con amigos para que te agreguen a sus paseos
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🚪 Cerrar Sesión", key="btn_logout"):
             st.session_state.usuario_id = None
             st.session_state.usuario_nombre = None
             st.session_state.paseo_actual = None
@@ -251,26 +530,40 @@ def main_page():
 
 def crear_paseo_section(usuario_id):
     """Sección para crear un nuevo paseo"""
-    st.markdown("### 🆕 Crear Nuevo Paseo")
-    nombre = st.text_input("Nombre del Paseo")
-    descripcion = st.text_area("Descripción (opcional)")
+    st.markdown("""
+    <div class='modern-card'>
+        <h3 style='color: #f8fafc; margin-bottom: 1rem;'>🚀 Crear Nuevo Paseo</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    if st.button("Crear Paseo"):
+    nombre = st.text_input("🏷️ Nombre del Paseo", placeholder="Ej: Viaje a Cartagena 2024")
+    descripcion = st.text_area("📝 Descripción (opcional)", placeholder="Agrega detalles del paseo...", height=80)
+    
+    if st.button("✨ Crear Paseo", key="btn_crear_paseo"):
         if nombre:
             paseo_id = db.crear_paseo(nombre, descripcion, usuario_id)
-            st.success(f"¡Paseo '{nombre}' creado exitosamente!")
+            st.success(f"🎉 ¡Paseo '{nombre}' creado exitosamente!")
             st.rerun()
         else:
-            st.error("Por favor ingresa un nombre para el paseo")
+            st.error("⚠️ Por favor ingresa un nombre para el paseo")
 
 def mostrar_paseo(paseo_id, paseo_info, usuario_id):
     """Muestra la información de un paseo"""
-    st.markdown(f"# {paseo_info['nombre']}")
-    if paseo_info['descripcion']:
-        st.markdown(f"*{paseo_info['descripcion']}*")
+    descripcion_html = f"<p style='color: #94a3b8; font-size: 0.9rem; margin: 0;'>{paseo_info['descripcion']}</p>" if paseo_info['descripcion'] else ""
+    st.markdown(f"""
+    <div class='modern-card-glow' style='margin-bottom: 1rem;'>
+        <div style='display: flex; align-items: center; gap: 0.75rem;'>
+            <span style='font-size: 2rem;'>🚗</span>
+            <div>
+                <h2 style='margin: 0; color: #f8fafc;'>{paseo_info['nombre']}</h2>
+                {descripcion_html}
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Tabs principales
-    tab1, tab2, tab3, tab4 = st.tabs(["➕ Gastos", "📊 Resumen", "💰 Deudas", "👥 Participantes"])
+    tab1, tab2, tab3, tab4 = st.tabs(["💳 Gastos", "📊 Resumen", "💸 Deudas", "👥 Equipo"])
     
     with tab1:
         mostrar_gastos(paseo_id, usuario_id)
@@ -286,15 +579,21 @@ def mostrar_paseo(paseo_id, paseo_info, usuario_id):
 
 def mostrar_gastos(paseo_id, usuario_id):
     """Muestra y permite agregar gastos"""
-    st.markdown("### Agregar Nuevo Gasto")
+    st.markdown("""
+    <div class='modern-card'>
+        <h3 style='color: #f8fafc; margin: 0 0 0.5rem 0;'>➕ Nuevo Gasto</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # Formulario de gasto
-    col1, col2 = st.columns(2)
+    # Formulario de gasto compacto
+    col1, col2, col3 = st.columns([2, 2, 3])
     with col1:
-        valor = st.number_input("Valor (COP)", min_value=0.0, step=1000.0, format="%.0f")
+        valor = st.number_input("💵 Valor (COP)", min_value=0.0, step=1000.0, format="%.0f")
     with col2:
-        fecha = st.date_input("Fecha", value=date.today())
-        tipo_gasto = st.selectbox("Tipo de Registro", ["Texto", "Audio", "Foto", "Video"])
+        fecha = st.date_input("📅 Fecha", value=date.today())
+    with col3:
+        tipo_gasto = st.selectbox("📎 Tipo", ["📝 Texto", "🎤 Audio", "📸 Foto", "🎬 Video"])
+        tipo_gasto = tipo_gasto.split(" ")[1]  # Extraer solo el texto sin emoji
     
     # Limpiar transcripción si cambia el tipo
     if 'tipo_gasto_anterior' not in st.session_state:
@@ -416,43 +715,69 @@ def mostrar_gastos(paseo_id, usuario_id):
     
     if gastos:
         for gasto in gastos:
-            with st.expander(f"💰 {gasto['concepto']} - ${gasto['valor']:,.0f} COP"):
-                col1, col2, col3 = st.columns(3)
+            fecha_str = datetime.fromisoformat(gasto['fecha']).strftime('%d/%m/%Y')
+            tipo_icon = {"audio": "🎤", "foto": "📸", "video": "🎬", "texto": "📝"}.get(gasto['tipo_archivo'], "💰")
+            
+            st.markdown(f"""
+            <div class='gasto-card'>
+                <div style='display: flex; justify-content: space-between; align-items: flex-start;'>
+                    <div>
+                        <span class='gasto-concepto'>{tipo_icon} {gasto['concepto']}</span>
+                        <div class='gasto-meta'>👤 {gasto['usuario_nombre']} • 📅 {fecha_str}</div>
+                    </div>
+                    <div class='gasto-valor'>${gasto['valor']:,.0f}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            with st.expander("📝 Ver detalles y editar"):
+                col1, col2 = st.columns(2)
                 with col1:
-                    st.write(f"**Pagado por:** {gasto['usuario_nombre']}")
-                    st.write(f"**Fecha:** {datetime.fromisoformat(gasto['fecha']).strftime('%d/%m/%Y')}")
-                with col2:
-                    if gasto['tipo_archivo']:
-                        st.write(f"**Tipo:** {gasto['tipo_archivo']}")
-                        if gasto['archivo_path'] and os.path.exists(gasto['archivo_path']):
-                            if gasto['tipo_archivo'] == 'audio':
-                                st.audio(gasto['archivo_path'])
-                            elif gasto['tipo_archivo'] == 'foto':
-                                st.image(gasto['archivo_path'])
-                            elif gasto['tipo_archivo'] == 'video':
-                                st.video(gasto['archivo_path'])
-                with col3:
+                    if gasto['tipo_archivo'] and gasto['archivo_path'] and os.path.exists(gasto['archivo_path']):
+                        if gasto['tipo_archivo'] == 'audio':
+                            st.audio(gasto['archivo_path'])
+                        elif gasto['tipo_archivo'] == 'foto':
+                            st.image(gasto['archivo_path'], width=200)
+                        elif gasto['tipo_archivo'] == 'video':
+                            st.video(gasto['archivo_path'])
                     if gasto['transcripcion']:
-                        st.write(f"**Transcripción:** {gasto['transcripcion']}")
+                        st.markdown(f"**🎤 Transcripción:** _{gasto['transcripcion']}_")
                 
-                # Divisiones
-                divisiones = db.get_divisiones_gasto(gasto['id'])
-                st.write("**División:**")
-                for div in divisiones:
-                    st.write(f"- {div['usuario_nombre']}: {div['porcentaje']}% (${div['monto']:,.0f} COP)")
+                with col2:
+                    # Divisiones compactas
+                    divisiones = db.get_divisiones_gasto(gasto['id'])
+                    st.markdown("**📊 División:**")
+                    for div in divisiones:
+                        st.markdown(f"""
+                        <div style='display: flex; justify-content: space-between; padding: 0.2rem 0; border-bottom: 1px solid rgba(99,102,241,0.2);'>
+                            <span style='color: #e2e8f0;'>{div['usuario_nombre']}</span>
+                            <span style='color: #fbbf24;'>{div['porcentaje']}% • ${div['monto']:,.0f}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
                 
                 # Editar gasto
-                if st.button(f"Editar", key=f"edit_{gasto['id']}"):
-                    st.session_state[f"editing_{gasto['id']}"] = True
+                st.markdown("---")
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.button(f"✏️ Editar", key=f"edit_{gasto['id']}"):
+                        st.session_state[f"editing_{gasto['id']}"] = True
+                with col_btn2:
+                    if st.button(f"🗑️ Eliminar", key=f"delete_{gasto['id']}"):
+                        db.eliminar_gasto(gasto['id'])
+                        st.rerun()
                 
                 if st.session_state.get(f"editing_{gasto['id']}", False):
+                    st.markdown("#### ✏️ Editar Gasto")
                     nuevo_concepto = st.text_input("Concepto", value=gasto['concepto'], key=f"edit_concepto_{gasto['id']}")
-                    nuevo_valor = st.number_input("Valor", value=float(gasto['valor']), key=f"edit_valor_{gasto['id']}")
-                    nueva_fecha = st.date_input("Fecha", value=datetime.fromisoformat(gasto['fecha']).date(), key=f"edit_fecha_{gasto['id']}")
+                    col_e1, col_e2 = st.columns(2)
+                    with col_e1:
+                        nuevo_valor = st.number_input("Valor", value=float(gasto['valor']), key=f"edit_valor_{gasto['id']}")
+                    with col_e2:
+                        nueva_fecha = st.date_input("Fecha", value=datetime.fromisoformat(gasto['fecha']).date(), key=f"edit_fecha_{gasto['id']}")
                     
-                    col_edit1, col_edit2 = st.columns(2)
-                    with col_edit1:
-                        if st.button("Guardar Cambios", key=f"save_{gasto['id']}"):
+                    col_save, col_cancel = st.columns(2)
+                    with col_save:
+                        if st.button("💾 Guardar", key=f"save_{gasto['id']}"):
                             db.actualizar_gasto(
                                 gasto['id'],
                                 nuevo_concepto,
@@ -461,75 +786,123 @@ def mostrar_gastos(paseo_id, usuario_id):
                             )
                             st.session_state[f"editing_{gasto['id']}"] = False
                             st.rerun()
-                    with col_edit2:
-                        if st.button("Cancelar", key=f"cancel_{gasto['id']}"):
+                    with col_cancel:
+                        if st.button("❌ Cancelar", key=f"cancel_{gasto['id']}"):
                             st.session_state[f"editing_{gasto['id']}"] = False
                             st.rerun()
-                    
-                    if st.button("Eliminar Gasto", key=f"delete_{gasto['id']}"):
-                        db.eliminar_gasto(gasto['id'])
-                        st.rerun()
     else:
-        st.info("No hay gastos registrados aún")
+        st.markdown("""
+        <div class='modern-card' style='text-align: center; padding: 2rem;'>
+            <span style='font-size: 3rem;'>📝</span>
+            <p style='color: #94a3b8; margin-top: 1rem;'>No hay gastos registrados aún</p>
+            <p style='color: #6366f1; font-size: 0.9rem;'>¡Agrega tu primer gasto arriba!</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 def mostrar_resumen(paseo_id, usuario_id):
     """Muestra el resumen de gastos del usuario"""
     resumen = db.get_resumen_usuario_paseo(usuario_id, paseo_id)
     
+    # Métricas con diseño moderno
+    st.markdown("""
+    <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;'>
+    """, unsafe_allow_html=True)
+    
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Pagado", f"${resumen['total_pagado']:,.0f} COP")
+        st.markdown(f"""
+        <div class='metric-card'>
+            <div class='metric-label'>💳 Pagado</div>
+            <div class='metric-value' style='color: #10b981;'>${resumen['total_pagado']:,.0f}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col2:
-        st.metric("Total Debe", f"${resumen['total_debe']:,.0f} COP")
+        st.markdown(f"""
+        <div class='metric-card'>
+            <div class='metric-label'>📤 Debe</div>
+            <div class='metric-value' style='color: #f59e0b;'>${resumen['total_debe']:,.0f}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with col3:
-        balance_class = "balance-positive" if resumen['balance'] >= 0 else "balance-negative"
-        st.markdown(f"<div class='{balance_class}'>Balance: ${resumen['balance']:,.0f} COP</div>", unsafe_allow_html=True)
+        balance_color = '#10b981' if resumen['balance'] >= 0 else '#ef4444'
+        balance_icon = '📈' if resumen['balance'] >= 0 else '📉'
+        st.markdown(f"""
+        <div class='metric-card'>
+            <div class='metric-label'>{balance_icon} Balance</div>
+            <div class='metric-value' style='color: {balance_color};'>${resumen['balance']:,.0f}</div>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
     
     # Resumen de todos los participantes
-    st.markdown("### Resumen por Participante")
+    st.markdown("### 👥 Resumen por Participante")
     participantes = db.get_participantes_paseo(paseo_id)
     for participante in participantes:
         resumen_part = db.get_resumen_usuario_paseo(participante['id'], paseo_id)
+        balance_color = '#10b981' if resumen_part['balance'] >= 0 else '#ef4444'
         with st.expander(f"👤 {participante['nombre']}"):
-            st.write(f"**Pagado:** ${resumen_part['total_pagado']:,.0f} COP")
-            st.write(f"**Debe:** ${resumen_part['total_debe']:,.0f} COP")
-            st.write(f"**Balance:** ${resumen_part['balance']:,.0f} COP")
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                st.markdown(f"**💳 Pagó:** <span style='color:#10b981'>${resumen_part['total_pagado']:,.0f}</span>", unsafe_allow_html=True)
+            with col_b:
+                st.markdown(f"**📤 Debe:** <span style='color:#f59e0b'>${resumen_part['total_debe']:,.0f}</span>", unsafe_allow_html=True)
+            with col_c:
+                st.markdown(f"**📊 Balance:** <span style='color:{balance_color}'>${resumen_part['balance']:,.0f}</span>", unsafe_allow_html=True)
 
 def mostrar_deudas(paseo_id, usuario_id):
     """Muestra las deudas entre usuarios"""
     deudas = db.calcular_deudas_paseo(paseo_id)
     
     if deudas:
-        st.markdown("### 💸 Deudas Pendientes")
-        for deuda in deudas:
-            if deuda['deudor_id'] == usuario_id or deuda['pagador_id'] == usuario_id:
+        # Mis deudas primero
+        mis_deudas = [d for d in deudas if d['deudor_id'] == usuario_id or d['pagador_id'] == usuario_id]
+        if mis_deudas:
+            st.markdown("### 🔥 Mis Deudas")
+            for deuda in mis_deudas:
+                es_deudor = deuda['deudor_id'] == usuario_id
+                icono = "📤" if es_deudor else "📥"
+                color = "#ef4444" if es_deudor else "#10b981"
                 st.markdown(f"""
-                <div class="deuda-item">
-                    <h4>{deuda['deudor_nombre']} debe ${deuda['total']:,.0f} COP a {deuda['pagador_nombre']}</h4>
+                <div class='deuda-card'>
+                    <div style='display: flex; justify-content: space-between; align-items: center;'>
+                        <div>
+                            <span style='font-size: 1.2rem;'>{icono}</span>
+                            <span class='deuda-texto'>
+                                {'Debes a' if es_deudor else 'Te debe'} <strong>{deuda['pagador_nombre'] if es_deudor else deuda['deudor_nombre']}</strong>
+                            </span>
+                        </div>
+                        <div class='deuda-monto' style='color: {color};'>${deuda['total']:,.0f}</div>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                with st.expander("Ver detalles"):
+                with st.expander("📋 Ver conceptos"):
                     for concepto in deuda['conceptos']:
-                        st.write(f"- {concepto['concepto']}: ${concepto['monto']:,.0f} COP")
-    else:
-        st.info("No hay deudas pendientes")
-    
-    # Todas las deudas (para administradores)
-    st.markdown("### 📊 Todas las Deudas del Paseo")
-    if deudas:
+                        st.markdown(f"• {concepto['concepto']}: <span style='color:#fbbf24'>${concepto['monto']:,.0f}</span>", unsafe_allow_html=True)
+        
+        # Todas las deudas
+        st.markdown("### 📊 Todas las Deudas")
         for deuda in deudas:
             st.markdown(f"""
-            <div class="deuda-item">
-                <strong>{deuda['deudor_nombre']}</strong> debe 
-                <strong>${deuda['total']:,.0f} COP</strong> a 
-                <strong>{deuda['pagador_nombre']}</strong>
+            <div class='deuda-card'>
+                <div style='display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;'>
+                    <div class='deuda-texto'>
+                        <span class='badge badge-danger'>{deuda['deudor_nombre']}</span>
+                        → 
+                        <span class='badge badge-success'>{deuda['pagador_nombre']}</span>
+                    </div>
+                    <div class='deuda-monto'>${deuda['total']:,.0f}</div>
+                </div>
             </div>
             """, unsafe_allow_html=True)
-            
-            with st.expander("Ver conceptos"):
-                for concepto in deuda['conceptos']:
-                    st.write(f"• {concepto['concepto']}: ${concepto['monto']:,.0f} COP")
+    else:
+        st.markdown("""
+        <div class='modern-card' style='text-align: center; padding: 2rem;'>
+            <span style='font-size: 3rem;'>🎉</span>
+            <p style='color: #10b981; font-weight: 600; margin-top: 1rem;'>¡No hay deudas pendientes!</p>
+        </div>
+        """, unsafe_allow_html=True)
 
 def mostrar_participantes(paseo_id, usuario_id):
     """Muestra y permite agregar participantes"""
@@ -537,8 +910,17 @@ def mostrar_participantes(paseo_id, usuario_id):
     participantes = db.get_participantes_paseo(paseo_id)
     
     if participantes:
+        st.markdown("<div style='display: flex; flex-wrap: wrap; gap: 0.5rem;'>", unsafe_allow_html=True)
         for participante in participantes:
-            st.markdown(f"• **{participante['nombre']}** (@{participante['username']}) - ID: {participante['id']}")
+            inicial = participante['nombre'][0].upper()
+            st.markdown(f"""
+            <div class='participant-chip'>
+                <div class='participant-avatar'>{inicial}</div>
+                <span>{participante['nombre']}</span>
+                <span style='color: #94a3b8; font-size: 0.75rem; margin-left: 0.5rem;'>#{participante['id']}</span>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.info("No hay participantes aún")
     
