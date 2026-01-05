@@ -563,7 +563,7 @@ def mostrar_paseo(paseo_id, paseo_info, usuario_id):
     """, unsafe_allow_html=True)
     
     # Tabs principales
-    tab1, tab2, tab3, tab4 = st.tabs(["💳 Gastos", "📊 Resumen", "💸 Deudas", "👥 Equipo"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["💳 Gastos", "📊 Resumen", "💸 Deudas", "👥 Equipo", "🏷️ Categorías"])
     
     with tab1:
         mostrar_gastos(paseo_id, usuario_id)
@@ -576,6 +576,9 @@ def mostrar_paseo(paseo_id, paseo_info, usuario_id):
     
     with tab4:
         mostrar_participantes(paseo_id, usuario_id)
+    
+    with tab5:
+        mostrar_categorias(paseo_id)
 
 def mostrar_gastos(paseo_id, usuario_id):
     """Muestra y permite agregar gastos"""
@@ -695,8 +698,25 @@ def mostrar_gastos(paseo_id, usuario_id):
         if archivo_subido:
             st.video(archivo_subido)
     
+    # Selector de categoría
+    st.markdown("### 🏷️ Categoría")
+    categorias = db.get_categorias_paseo(paseo_id)
+    
+    if categorias:
+        cat_opciones = {f"{c['icono']} {c['nombre'].split(' ', 1)[-1] if ' ' in c['nombre'] else c['nombre']}": c['id'] for c in categorias}
+        cat_opciones["➕ Sin categoría"] = None
+        categoria_seleccionada = st.selectbox(
+            "Selecciona una categoría",
+            options=list(cat_opciones.keys()),
+            key="categoria_selector"
+        )
+        categoria_id = cat_opciones[categoria_seleccionada]
+    else:
+        categoria_id = None
+        st.info("No hay categorías disponibles")
+    
     # División del gasto (antes de guardar)
-    st.markdown("### Dividir Gasto")
+    st.markdown("### 👥 Dividir Gasto")
     participantes = db.get_participantes_paseo(paseo_id)
     divisiones = {}
     total_porcentaje = 0
@@ -747,7 +767,8 @@ def mostrar_gastos(paseo_id, usuario_id):
                 datetime.combine(fecha, datetime.min.time()),
                 tipo_archivo_final,
                 archivo_path,
-                transcripcion_final
+                transcripcion_final,
+                categoria_id
             )
             
             # Crear divisiones
@@ -782,18 +803,59 @@ def mostrar_gastos(paseo_id, usuario_id):
     # Lista de gastos
     st.markdown("---")
     st.markdown("### 📋 Gastos Registrados")
-    gastos = db.get_gastos_paseo(paseo_id)
+    
+    # Filtro por categoría
+    categorias_filtro = db.get_categorias_paseo(paseo_id)
+    filtro_opciones = {"🔄 Todas las categorías": None}
+    for cat in categorias_filtro:
+        filtro_opciones[f"{cat['icono']} {cat['nombre'].split(' ', 1)[-1] if ' ' in cat['nombre'] else cat['nombre']}"] = cat['id']
+    
+    col_filtro1, col_filtro2 = st.columns([3, 1])
+    with col_filtro1:
+        filtro_categoria = st.selectbox(
+            "Filtrar por categoría",
+            options=list(filtro_opciones.keys()),
+            key="filtro_categoria",
+            label_visibility="collapsed"
+        )
+    
+    categoria_filtro_id = filtro_opciones[filtro_categoria]
+    gastos = db.get_gastos_paseo(paseo_id, categoria_filtro_id)
+    
+    # Mostrar resumen por categorías
+    resumen_categorias = db.get_gastos_por_categoria(paseo_id)
+    if resumen_categorias:
+        st.markdown("<div style='display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.5rem 0;'>", unsafe_allow_html=True)
+        for cat in resumen_categorias:
+            if cat['total'] > 0:
+                st.markdown(f"""
+                <div style='background: {cat['color']}20; border: 1px solid {cat['color']}50; 
+                            border-radius: 20px; padding: 0.3rem 0.7rem; display: inline-flex; 
+                            align-items: center; gap: 0.3rem;'>
+                    <span>{cat['icono']}</span>
+                    <span style='color: #e2e8f0; font-size: 0.8rem;'>${cat['total']:,.0f}</span>
+                </div>
+                """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     
     if gastos:
         for gasto in gastos:
             fecha_str = datetime.fromisoformat(gasto['fecha']).strftime('%d/%m/%Y')
             tipo_icon = {"audio": "🎤", "foto": "📸", "video": "🎬", "texto": "📝"}.get(gasto['tipo_archivo'], "💰")
             
+            # Mostrar categoría si existe
+            cat_badge = ""
+            if gasto.get('categoria_nombre'):
+                cat_color = gasto.get('categoria_color', '#6366f1')
+                cat_icono = gasto.get('categoria_icono', '📦')
+                cat_nombre = gasto['categoria_nombre'].split(' ', 1)[-1] if ' ' in gasto['categoria_nombre'] else gasto['categoria_nombre']
+                cat_badge = f"<span style='background: {cat_color}30; color: {cat_color}; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;'>{cat_icono} {cat_nombre}</span>"
+            
             st.markdown(f"""
             <div class='gasto-card'>
                 <div style='display: flex; justify-content: space-between; align-items: flex-start;'>
                     <div>
-                        <span class='gasto-concepto'>{tipo_icon} {gasto['concepto']}</span>
+                        <span class='gasto-concepto'>{tipo_icon} {gasto['concepto']}{cat_badge}</span>
                         <div class='gasto-meta'>👤 {gasto['usuario_nombre']} • 📅 {fecha_str}</div>
                     </div>
                     <div class='gasto-valor'>${gasto['valor']:,.0f}</div>
@@ -1028,6 +1090,84 @@ def mostrar_participantes(paseo_id, usuario_id):
                 st.rerun()
             else:
                 st.error("No se pudo agregar el participante (puede que ya esté agregado o el ID no exista)")
+
+def mostrar_categorias(paseo_id):
+    """Muestra y permite gestionar las categorías del paseo"""
+    st.markdown("### 🏷️ Categorías de Gastos")
+    
+    categorias = db.get_categorias_paseo(paseo_id)
+    resumen = db.get_gastos_por_categoria(paseo_id)
+    
+    # Crear diccionario de resumen para acceso rápido
+    resumen_dict = {r['id']: r for r in resumen}
+    
+    if categorias:
+        st.markdown("<div style='display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem;'>", unsafe_allow_html=True)
+        for cat in categorias:
+            total = resumen_dict.get(cat['id'], {}).get('total', 0)
+            cantidad = resumen_dict.get(cat['id'], {}).get('cantidad_gastos', 0)
+            st.markdown(f"""
+            <div style='background: linear-gradient(135deg, {cat['color']}20, {cat['color']}10); 
+                        border: 1px solid {cat['color']}40; border-radius: 12px; padding: 1rem; text-align: center;'>
+                <div style='font-size: 2rem;'>{cat['icono']}</div>
+                <div style='color: #f8fafc; font-weight: 600; font-size: 0.9rem;'>{cat['nombre'].split(' ', 1)[-1] if ' ' in cat['nombre'] else cat['nombre']}</div>
+                <div style='color: {cat['color']}; font-weight: 700; font-size: 1.1rem;'>${total:,.0f}</div>
+                <div style='color: #94a3b8; font-size: 0.75rem;'>{cantidad} gasto(s)</div>
+            </div>
+            """, unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.info("No hay categorías creadas")
+    
+    st.markdown("---")
+    st.markdown("### ➕ Crear Nueva Categoría")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    with col1:
+        nueva_cat_nombre = st.text_input("Nombre", placeholder="Ej: Souvenirs", key="nueva_cat_nombre")
+    with col2:
+        iconos_disponibles = ["🎁", "🎮", "🎬", "🎪", "🏖️", "⚽", "🎳", "🎨", "📚", "🎵", "🍕", "🍺", "🧴", "👕", "💇", "🔧", "📱", "💻"]
+        nuevo_icono = st.selectbox("Icono", iconos_disponibles, key="nuevo_cat_icono")
+    with col3:
+        colores_disponibles = {
+            "Rojo": "#ef4444",
+            "Naranja": "#f97316",
+            "Ámbar": "#f59e0b",
+            "Verde": "#10b981",
+            "Teal": "#14b8a6",
+            "Azul": "#3b82f6",
+            "Índigo": "#6366f1",
+            "Púrpura": "#8b5cf6",
+            "Rosa": "#ec4899",
+            "Gris": "#6b7280"
+        }
+        nuevo_color_nombre = st.selectbox("Color", list(colores_disponibles.keys()), key="nuevo_cat_color")
+        nuevo_color = colores_disponibles[nuevo_color_nombre]
+    
+    if st.button("✨ Crear Categoría", key="btn_crear_categoria"):
+        if nueva_cat_nombre:
+            nombre_completo = f"{nuevo_icono} {nueva_cat_nombre}"
+            resultado = db.crear_categoria(paseo_id, nombre_completo, nuevo_icono, nuevo_color)
+            if resultado > 0:
+                st.success(f"🎉 Categoría '{nueva_cat_nombre}' creada exitosamente")
+                st.rerun()
+            else:
+                st.error("❌ Ya existe una categoría con ese nombre")
+        else:
+            st.error("⚠️ Ingresa un nombre para la categoría")
+    
+    # Lista de categorías existentes para eliminar
+    if categorias:
+        st.markdown("---")
+        st.markdown("### 🗑️ Eliminar Categoría")
+        cat_eliminar_opciones = {f"{c['icono']} {c['nombre'].split(' ', 1)[-1] if ' ' in c['nombre'] else c['nombre']}": c['id'] for c in categorias}
+        cat_a_eliminar = st.selectbox("Selecciona categoría a eliminar", list(cat_eliminar_opciones.keys()), key="cat_eliminar")
+        
+        st.warning("⚠️ Los gastos de esta categoría no se eliminarán, solo quedarán sin categoría.")
+        if st.button("🗑️ Eliminar", key="btn_eliminar_categoria"):
+            db.eliminar_categoria(cat_eliminar_opciones[cat_a_eliminar])
+            st.success("Categoría eliminada")
+            st.rerun()
 
 # Routing principal
 if st.session_state.usuario_id is None:

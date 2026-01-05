@@ -56,12 +56,27 @@ class Database:
             )
         """)
         
+        # Tabla de categorías de gastos
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categorias (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                paseo_id INTEGER NOT NULL,
+                nombre TEXT NOT NULL,
+                icono TEXT DEFAULT '📦',
+                color TEXT DEFAULT '#6366f1',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (paseo_id) REFERENCES paseos(id),
+                UNIQUE(paseo_id, nombre)
+            )
+        """)
+        
         # Tabla de gastos
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS gastos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 paseo_id INTEGER NOT NULL,
                 usuario_id INTEGER NOT NULL,
+                categoria_id INTEGER,
                 concepto TEXT NOT NULL,
                 valor REAL NOT NULL,
                 fecha TIMESTAMP NOT NULL,
@@ -70,7 +85,8 @@ class Database:
                 transcripcion TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (paseo_id) REFERENCES paseos(id),
-                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+                FOREIGN KEY (categoria_id) REFERENCES categorias(id)
             )
         """)
         
@@ -160,9 +176,68 @@ class Database:
             INSERT INTO paseo_participantes (paseo_id, usuario_id)
             VALUES (?, ?)
         """, (paseo_id, created_by))
+        
+        # Crear categorías predeterminadas
+        categorias_default = [
+            ("🍽️ Restaurante", "🍽️", "#ef4444"),
+            ("☕ Cafetería", "☕", "#f59e0b"),
+            ("🚗 Transporte", "🚗", "#3b82f6"),
+            ("🏨 Hospedaje", "🏨", "#8b5cf6"),
+            ("🎫 Entradas", "🎫", "#ec4899"),
+            ("🛒 Supermercado", "🛒", "#10b981"),
+            ("⛽ Gasolina", "⛽", "#6366f1"),
+            ("🎉 Entretenimiento", "🎉", "#f97316"),
+            ("💊 Farmacia", "💊", "#14b8a6"),
+            ("📦 Otros", "📦", "#94a3b8"),
+        ]
+        for cat_nombre, icono, color in categorias_default:
+            cursor.execute("""
+                INSERT INTO categorias (paseo_id, nombre, icono, color)
+                VALUES (?, ?, ?, ?)
+            """, (paseo_id, cat_nombre, icono, color))
+        
         conn.commit()
         conn.close()
         return paseo_id
+    
+    # Métodos de categorías
+    def get_categorias_paseo(self, paseo_id: int) -> List[Dict]:
+        """Obtiene todas las categorías de un paseo"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT * FROM categorias WHERE paseo_id = ? ORDER BY nombre
+        """, (paseo_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    
+    def crear_categoria(self, paseo_id: int, nombre: str, icono: str = "📦", color: str = "#6366f1") -> int:
+        """Crea una nueva categoría"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO categorias (paseo_id, nombre, icono, color)
+                VALUES (?, ?, ?, ?)
+            """, (paseo_id, nombre, icono, color))
+            categoria_id = cursor.lastrowid
+            conn.commit()
+            conn.close()
+            return categoria_id
+        except sqlite3.IntegrityError:
+            return -1
+    
+    def eliminar_categoria(self, categoria_id: int) -> bool:
+        """Elimina una categoría"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        # Primero quitar la categoría de los gastos
+        cursor.execute("UPDATE gastos SET categoria_id = NULL WHERE categoria_id = ?", (categoria_id,))
+        cursor.execute("DELETE FROM categorias WHERE id = ?", (categoria_id,))
+        conn.commit()
+        conn.close()
+        return True
     
     def get_paseos_usuario(self, usuario_id: int) -> List[Dict]:
         """Obtiene todos los paseos de un usuario"""
@@ -212,30 +287,64 @@ class Database:
     # Métodos de gastos
     def crear_gasto(self, paseo_id: int, usuario_id: int, concepto: str, 
                    valor: float, fecha: datetime, tipo_archivo: str = None, 
-                   archivo_path: str = None, transcripcion: str = None) -> int:
+                   archivo_path: str = None, transcripcion: str = None,
+                   categoria_id: int = None) -> int:
         """Crea un nuevo gasto"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO gastos (paseo_id, usuario_id, concepto, valor, fecha, 
+            INSERT INTO gastos (paseo_id, usuario_id, categoria_id, concepto, valor, fecha, 
                               tipo_archivo, archivo_path, transcripcion)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (paseo_id, usuario_id, concepto, valor, fecha, tipo_archivo, archivo_path, transcripcion))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (paseo_id, usuario_id, categoria_id, concepto, valor, fecha, tipo_archivo, archivo_path, transcripcion))
         gasto_id = cursor.lastrowid
         conn.commit()
         conn.close()
         return gasto_id
     
-    def get_gastos_paseo(self, paseo_id: int) -> List[Dict]:
-        """Obtiene todos los gastos de un paseo"""
+    def get_gastos_paseo(self, paseo_id: int, categoria_id: int = None) -> List[Dict]:
+        """Obtiene todos los gastos de un paseo, opcionalmente filtrados por categoría"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if categoria_id:
+            cursor.execute("""
+                SELECT g.*, u.nombre as usuario_nombre,
+                       c.nombre as categoria_nombre, c.icono as categoria_icono, c.color as categoria_color
+                FROM gastos g
+                JOIN usuarios u ON g.usuario_id = u.id
+                LEFT JOIN categorias c ON g.categoria_id = c.id
+                WHERE g.paseo_id = ? AND g.categoria_id = ?
+                ORDER BY g.fecha DESC
+            """, (paseo_id, categoria_id))
+        else:
+            cursor.execute("""
+                SELECT g.*, u.nombre as usuario_nombre,
+                       c.nombre as categoria_nombre, c.icono as categoria_icono, c.color as categoria_color
+                FROM gastos g
+                JOIN usuarios u ON g.usuario_id = u.id
+                LEFT JOIN categorias c ON g.categoria_id = c.id
+                WHERE g.paseo_id = ?
+                ORDER BY g.fecha DESC
+            """, (paseo_id,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    
+    def get_gastos_por_categoria(self, paseo_id: int) -> List[Dict]:
+        """Obtiene el resumen de gastos agrupados por categoría"""
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT g.*, u.nombre as usuario_nombre
-            FROM gastos g
-            JOIN usuarios u ON g.usuario_id = u.id
-            WHERE g.paseo_id = ?
-            ORDER BY g.fecha DESC
+            SELECT c.id, c.nombre, c.icono, c.color,
+                   COUNT(g.id) as cantidad_gastos,
+                   COALESCE(SUM(g.valor), 0) as total
+            FROM categorias c
+            LEFT JOIN gastos g ON c.id = g.categoria_id
+            WHERE c.paseo_id = ?
+            GROUP BY c.id, c.nombre, c.icono, c.color
+            ORDER BY total DESC
         """, (paseo_id,))
         rows = cursor.fetchall()
         conn.close()
