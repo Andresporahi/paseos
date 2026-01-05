@@ -552,18 +552,9 @@ def crear_paseo_section(usuario_id):
 
 def mostrar_paseo(paseo_id, paseo_info, usuario_id):
     """Muestra la información de un paseo"""
-    descripcion_html = f"<p style='color: #94a3b8; font-size: 0.9rem; margin: 0;'>{paseo_info['descripcion']}</p>" if paseo_info['descripcion'] else ""
-    st.markdown(f"""
-    <div class='modern-card-glow' style='margin-bottom: 1rem;'>
-        <div style='display: flex; align-items: center; gap: 0.75rem;'>
-            <span style='font-size: 2rem;'>🚗</span>
-            <div>
-                <h2 style='margin: 0; color: #f8fafc;'>{paseo_info['nombre']}</h2>
-                {descripcion_html}
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"## 🚗 {paseo_info['nombre']}")
+    if paseo_info.get('descripcion'):
+        st.caption(paseo_info['descripcion'])
     
     # Tabs principales
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["💳 Gastos", "📊 Resumen", "💸 Deudas", "👥 Equipo", "🏷️ Categorías"])
