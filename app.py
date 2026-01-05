@@ -646,7 +646,10 @@ def mostrar_gastos(paseo_id, usuario_id):
                     
                     if resultado:
                         st.session_state['transcripcion_temp'] = resultado['transcripcion']
-                        st.session_state['concepto_extraido'] = resultado['concepto']
+                        # Agregar nombre del usuario al concepto
+                        usuario_nombre = st.session_state.get('usuario_nombre', '')
+                        concepto_con_usuario = f"{resultado['concepto']} - {usuario_nombre}" if usuario_nombre else resultado['concepto']
+                        st.session_state['concepto_extraido'] = concepto_con_usuario
                         st.session_state['valor_extraido'] = resultado['valor']
                         st.session_state['categoria_extraida'] = resultado['categoria']
                         st.session_state['audio_temp'] = audio_bytes
@@ -713,7 +716,10 @@ def mostrar_gastos(paseo_id, usuario_id):
                     resultado = analizar_foto_factura(imagen_base64)
                     
                     if resultado and (resultado['concepto'] or resultado['valor'] > 0):
-                        st.session_state['concepto_extraido'] = resultado['concepto']
+                        # Agregar nombre del usuario al concepto
+                        usuario_nombre = st.session_state.get('usuario_nombre', '')
+                        concepto_con_usuario = f"{resultado['concepto']} - {usuario_nombre}" if usuario_nombre else resultado['concepto']
+                        st.session_state['concepto_extraido'] = concepto_con_usuario
                         st.session_state['valor_extraido'] = resultado['valor']
                         st.session_state['foto_temp'] = foto_bytes
                         st.session_state['foto_procesada_size'] = foto_size
