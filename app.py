@@ -597,7 +597,7 @@ def mostrar_gastos(paseo_id, usuario_id):
     with col2:
         fecha = st.date_input("📅 Fecha", value=date.today())
     with col3:
-        tipo_gasto = st.selectbox("📎 Tipo", ["📝 Texto", "🎤 Audio", "📸 Foto", "🎬 Video"])
+        tipo_gasto = st.selectbox("📎 Tipo", ["🎤 Audio", "📸 Foto"])
         tipo_gasto = tipo_gasto.split(" ")[1]  # Extraer solo el texto sin emoji
     
     # Limpiar transcripción si cambia el tipo
@@ -732,47 +732,56 @@ def mostrar_gastos(paseo_id, usuario_id):
             st.info("💡 Los campos arriba se llenaron automáticamente. Puedes editarlos si es necesario.")
     
     elif tipo_gasto == "Foto":
-        archivo_subido = st.file_uploader("Subir foto", type=["jpg", "jpeg", "png"], key="foto_upload")
+        archivo_subido = st.file_uploader("📸 Subir foto del gasto", type=["jpg", "jpeg", "png"], key="foto_upload")
         if archivo_subido:
-            st.image(archivo_subido)
-    
-    elif tipo_gasto == "Video":
-        archivo_subido = st.file_uploader("Subir video", type=["mp4", "mov", "avi"], key="video_upload")
-        if archivo_subido:
-            st.video(archivo_subido)
+            st.image(archivo_subido, width=300)
     
     # Selector de categoría
     st.markdown("### 🏷️ Categoría")
     categorias = db.get_categorias_paseo(paseo_id)
     
-    if categorias:
-        cat_opciones = {f"{c['icono']} {c['nombre'].split(' ', 1)[-1] if ' ' in c['nombre'] else c['nombre']}": c['id'] for c in categorias}
-        cat_opciones_lista = list(cat_opciones.keys()) + ["➕ Sin categoría"]
-        
-        # Buscar índice de categoría extraída automáticamente
-        categoria_extraida = st.session_state.get('categoria_extraida', None)
-        indice_default = len(cat_opciones_lista) - 1  # Por defecto "Sin categoría"
-        
-        if categoria_extraida:
-            for i, cat_nombre in enumerate(cat_opciones_lista[:-1]):
-                if categoria_extraida.lower() in cat_nombre.lower():
-                    indice_default = i
-                    break
-        
-        categoria_seleccionada = st.selectbox(
-            "Selecciona una categoría",
-            options=cat_opciones_lista,
-            index=indice_default,
-            key="categoria_selector"
-        )
-        
-        if categoria_seleccionada == "➕ Sin categoría":
-            categoria_id = None
+    col_cat1, col_cat2 = st.columns([3, 2])
+    
+    with col_cat1:
+        if categorias:
+            cat_opciones = {f"{c['icono']} {c['nombre'].split(' ', 1)[-1] if ' ' in c['nombre'] else c['nombre']}": c['id'] for c in categorias}
+            cat_opciones_lista = list(cat_opciones.keys()) + ["✏️ Escribir nueva..."]
+            
+            # Buscar índice de categoría extraída automáticamente
+            categoria_extraida = st.session_state.get('categoria_extraida', None)
+            indice_default = 0
+            
+            if categoria_extraida:
+                for i, cat_nombre in enumerate(cat_opciones_lista[:-1]):
+                    if categoria_extraida.lower() in cat_nombre.lower():
+                        indice_default = i
+                        break
+            
+            categoria_seleccionada = st.selectbox(
+                "Selecciona o escribe una categoría",
+                options=cat_opciones_lista,
+                index=indice_default,
+                key="categoria_selector"
+            )
         else:
-            categoria_id = cat_opciones.get(categoria_seleccionada)
-    else:
+            categoria_seleccionada = "✏️ Escribir nueva..."
+    
+    with col_cat2:
+        # Campo para nueva categoría personalizada
+        if categoria_seleccionada == "✏️ Escribir nueva...":
+            nueva_cat_nombre = st.text_input("Nueva categoría", placeholder="Ej: Souvenirs", key="nueva_cat_rapida")
+        else:
+            nueva_cat_nombre = None
+    
+    # Determinar categoria_id
+    if categoria_seleccionada == "✏️ Escribir nueva..." and nueva_cat_nombre:
+        # Se creará la categoría al guardar el gasto
+        categoria_id = "nueva"
+        st.session_state['nueva_categoria_nombre'] = nueva_cat_nombre
+    elif categoria_seleccionada == "✏️ Escribir nueva...":
         categoria_id = None
-        st.info("No hay categorías disponibles")
+    else:
+        categoria_id = cat_opciones.get(categoria_seleccionada) if categorias else None
     
     # División del gasto (antes de guardar)
     st.markdown("### 👥 Dividir Gasto")
@@ -821,13 +830,23 @@ def mostrar_gastos(paseo_id, usuario_id):
             # Usar transcripción si existe
             transcripcion_final = st.session_state.get('transcripcion_temp', None)
             
+            # Crear nueva categoría si es necesario
+            categoria_id_final = categoria_id
+            if categoria_id == "nueva" and 'nueva_categoria_nombre' in st.session_state:
+                nueva_cat = st.session_state['nueva_categoria_nombre']
+                # Crear la categoría con icono y color por defecto
+                categoria_id_final = db.crear_categoria(paseo_id, f"🏷️ {nueva_cat}", "🏷️", "#6366f1")
+                if categoria_id_final == -1:
+                    categoria_id_final = None
+                del st.session_state['nueva_categoria_nombre']
+            
             gasto_id = db.crear_gasto(
                 paseo_id, usuario_id, concepto, valor,
                 datetime.combine(fecha, datetime.min.time()),
                 tipo_archivo_final,
                 archivo_path,
                 transcripcion_final,
-                categoria_id
+                categoria_id_final if categoria_id_final != "nueva" else None
             )
             
             # Crear divisiones
@@ -843,7 +862,7 @@ def mostrar_gastos(paseo_id, usuario_id):
             
             # Limpiar estado temporal
             keys_to_clear = ['transcripcion_temp', 'tipo_gasto_anterior', 'audio_temp', 
-                           'concepto_extraido', 'valor_extraido', 'categoria_extraida']
+                           'concepto_extraido', 'valor_extraido', 'categoria_extraida', 'nueva_categoria_nombre']
             for key in keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
