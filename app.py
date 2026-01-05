@@ -2,8 +2,10 @@ import streamlit as st
 import os
 from datetime import datetime, date
 from database import Database
-from openai_helper import transcribir_audio, transcribir_y_extraer, analizar_foto_factura
+from openai_helper import transcribir_audio, transcribir_y_extraer, analizar_foto_factura, generar_analisis_inteligente
 import base64
+import pandas as pd
+from io import BytesIO
 import tempfile
 import json
 
@@ -950,14 +952,13 @@ def mostrar_gastos(paseo_id, usuario_id):
         """, unsafe_allow_html=True)
 
 def mostrar_resumen(paseo_id, usuario_id):
-    """Muestra el resumen de gastos del usuario"""
+    """Muestra el resumen de gastos del usuario con análisis inteligente"""
     resumen = db.get_resumen_usuario_paseo(usuario_id, paseo_id)
+    gastos = db.get_gastos_paseo(paseo_id)
+    participantes = db.get_participantes_paseo(paseo_id)
+    deudas = db.calcular_deudas_paseo(paseo_id)
     
     # Métricas con diseño moderno
-    st.markdown("""
-    <div style='display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem;'>
-    """, unsafe_allow_html=True)
-    
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown(f"""
@@ -983,11 +984,79 @@ def mostrar_resumen(paseo_id, usuario_id):
         </div>
         """, unsafe_allow_html=True)
     
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Botón de descarga Excel
+    if gastos:
+        # Preparar datos para Excel
+        df_gastos = pd.DataFrame([{
+            'Fecha': g.get('fecha', ''),
+            'Concepto': g.get('concepto', ''),
+            'Valor': g.get('valor', 0),
+            'Pagado por': g.get('pagador_nombre', ''),
+            'Tipo': g.get('tipo_archivo', 'Manual')
+        } for g in gastos])
+        
+        df_deudas = pd.DataFrame([{
+            'Deudor': d.get('deudor_nombre', ''),
+            'Acreedor': d.get('pagador_nombre', ''),
+            'Monto': d.get('total', 0)
+        } for d in deudas]) if deudas else pd.DataFrame()
+        
+        df_participantes = pd.DataFrame([{
+            'Nombre': p.get('nombre', ''),
+            'Pagó': db.get_resumen_usuario_paseo(p['id'], paseo_id)['total_pagado'],
+            'Debe': db.get_resumen_usuario_paseo(p['id'], paseo_id)['total_debe'],
+            'Balance': db.get_resumen_usuario_paseo(p['id'], paseo_id)['balance']
+        } for p in participantes])
+        
+        # Crear Excel en memoria
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_gastos.to_excel(writer, sheet_name='Gastos', index=False)
+            df_participantes.to_excel(writer, sheet_name='Participantes', index=False)
+            if not df_deudas.empty:
+                df_deudas.to_excel(writer, sheet_name='Deudas', index=False)
+        output.seek(0)
+        
+        st.download_button(
+            label="📥 Descargar Excel",
+            data=output,
+            file_name=f"paseo_{paseo_id}_gastos.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
     
-    # Resumen de todos los participantes
-    st.markdown("### 👥 Resumen por Participante")
-    participantes = db.get_participantes_paseo(paseo_id)
+    # Análisis inteligente automático
+    if gastos:
+        st.markdown("---")
+        st.markdown("### 🤖 Análisis Inteligente")
+        
+        # Usar cache para no regenerar cada vez
+        cache_key = f"analisis_{paseo_id}_{len(gastos)}"
+        
+        if cache_key not in st.session_state:
+            with st.spinner("🧠 Analizando gastos con IA..."):
+                # Preparar gastos con nombre del pagador
+                gastos_con_pagador = []
+                for g in gastos:
+                    gasto_info = dict(g)
+                    # Obtener nombre del pagador
+                    pagador = next((p for p in participantes if p['id'] == g.get('usuario_id')), None)
+                    gasto_info['pagador_nombre'] = pagador['nombre'] if pagador else 'Desconocido'
+                    gastos_con_pagador.append(gasto_info)
+                
+                analisis = generar_analisis_inteligente(gastos_con_pagador, participantes, deudas)
+                if analisis:
+                    st.session_state[cache_key] = analisis
+        
+        if cache_key in st.session_state:
+            st.markdown(f"""
+            <div style='background: rgba(99,102,241,0.1); border-radius: 12px; padding: 1rem; border: 1px solid rgba(99,102,241,0.3);'>
+            """, unsafe_allow_html=True)
+            st.markdown(st.session_state[cache_key])
+            st.markdown("</div>", unsafe_allow_html=True)
+    
+    # Resumen por participante (colapsado)
+    st.markdown("---")
+    st.markdown("### 👥 Detalle por Participante")
     for participante in participantes:
         resumen_part = db.get_resumen_usuario_paseo(participante['id'], paseo_id)
         balance_color = '#10b981' if resumen_part['balance'] >= 0 else '#ef4444'

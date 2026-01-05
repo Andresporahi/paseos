@@ -211,3 +211,75 @@ Si no puedes identificar el establecimiento, usa "Compra"."""
         print(f"Error analizando foto: {e}")
         return {"concepto": "", "valor": 0}
 
+def generar_analisis_inteligente(gastos: list, participantes: list, deudas: list) -> str:
+    """
+    Genera un análisis inteligente del paseo usando ChatGPT.
+    Incluye: resumen, división por concepto, quién debe a quién y recomendaciones.
+    """
+    try:
+        client = get_openai_client()
+        if not client:
+            return None
+        
+        # Preparar datos para el análisis
+        gastos_texto = "\n".join([
+            f"- {g.get('concepto', 'Sin concepto')}: ${g.get('valor', 0):,.0f} (pagó: {g.get('pagador_nombre', 'Desconocido')}, fecha: {g.get('fecha', 'N/A')})"
+            for g in gastos
+        ])
+        
+        participantes_texto = ", ".join([p.get('nombre', 'Desconocido') for p in participantes])
+        
+        deudas_texto = "\n".join([
+            f"- {d.get('deudor_nombre', '?')} debe a {d.get('pagador_nombre', '?')}: ${d.get('total', 0):,.0f}"
+            for d in deudas
+        ]) if deudas else "No hay deudas pendientes."
+        
+        total_gastos = sum(g.get('valor', 0) for g in gastos)
+        num_participantes = len(participantes)
+        
+        prompt = f"""Analiza los gastos de este paseo y genera un resumen inteligente en español.
+
+PARTICIPANTES ({num_participantes}): {participantes_texto}
+
+GASTOS TOTALES: ${total_gastos:,.0f} COP
+
+LISTA DE GASTOS:
+{gastos_texto}
+
+DEUDAS ACTUALES:
+{deudas_texto}
+
+Genera un análisis con este formato exacto:
+
+## 📊 Resumen del Paseo
+
+**Total gastado:** ${total_gastos:,.0f} COP
+**Por persona (promedio):** ${total_gastos/num_participantes if num_participantes > 0 else 0:,.0f} COP
+
+## 🏪 Gastos por Concepto/Lugar
+(Agrupa los gastos similares y muestra el total de cada grupo)
+
+## 💰 Lo que debe cada persona
+(Para cada participante, lista cuánto debe en total y a quién, simplificando las deudas)
+
+## 💡 Recomendación de pago
+(Sugiere la forma más simple de saldar las deudas, minimizando transferencias)
+
+Sé conciso, usa emojis y formatea los números con separadores de miles."""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Eres un asistente financiero experto en dividir gastos de viajes grupales. Respondes en español con formato Markdown limpio."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=1500
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        print(f"Error generando análisis: {e}")
+        return None
+
