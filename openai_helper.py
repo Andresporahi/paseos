@@ -133,3 +133,81 @@ def transcribir_y_extraer(audio_file_path: str, categorias: list = None) -> Dict
         "categoria": info.get("categoria")
     }
 
+def analizar_foto_factura(imagen_base64: str) -> Dict:
+    """
+    Analiza una foto de factura/recibo usando GPT-4 Vision.
+    Extrae: concepto (nombre del establecimiento + descripción), valor total
+    """
+    try:
+        client = get_openai_client()
+        if not client:
+            return {"concepto": "", "valor": 0}
+        
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Eres un asistente experto en leer facturas y recibos. Extraes información de gastos en pesos colombianos."
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": """Analiza esta foto de factura/recibo y extrae:
+1. El nombre del establecimiento/restaurante/tienda
+2. Una descripción breve de lo que se compró
+3. El valor TOTAL a pagar (en pesos colombianos)
+
+Responde SOLO con un JSON válido:
+{
+    "concepto": "descripción incluyendo nombre del lugar",
+    "valor": número entero del total (sin puntos ni comas ni símbolos),
+    "establecimiento": "nombre del establecimiento"
+}
+
+Si no puedes leer el valor, usa 0.
+Si no puedes identificar el establecimiento, usa "Compra"."""
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{imagen_base64}",
+                                "detail": "high"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=300
+        )
+        
+        respuesta = response.choices[0].message.content.strip()
+        
+        # Limpiar la respuesta de markdown si existe
+        if respuesta.startswith("```"):
+            respuesta = re.sub(r'^```json?\s*', '', respuesta)
+            respuesta = re.sub(r'\s*```$', '', respuesta)
+        
+        resultado = json.loads(respuesta)
+        
+        # Asegurar que valor sea un número
+        if isinstance(resultado.get('valor'), str):
+            resultado['valor'] = int(re.sub(r'[^\d]', '', resultado['valor']) or 0)
+        
+        # Construir concepto con establecimiento si existe
+        establecimiento = resultado.get('establecimiento', '')
+        concepto = resultado.get('concepto', '')
+        if establecimiento and establecimiento.lower() not in concepto.lower():
+            concepto = f"{concepto} en {establecimiento}"
+        
+        return {
+            "concepto": concepto,
+            "valor": resultado.get("valor", 0)
+        }
+        
+    except Exception as e:
+        print(f"Error analizando foto: {e}")
+        return {"concepto": "", "valor": 0}
+

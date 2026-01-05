@@ -2,7 +2,8 @@ import streamlit as st
 import os
 from datetime import datetime, date
 from database import Database
-from openai_helper import transcribir_audio, transcribir_y_extraer
+from openai_helper import transcribir_audio, transcribir_y_extraer, analizar_foto_factura
+import base64
 import tempfile
 import json
 
@@ -606,7 +607,7 @@ def mostrar_gastos(paseo_id, usuario_id):
     if st.session_state['tipo_gasto_anterior'] != tipo_gasto:
         # Limpiar todos los valores temporales al cambiar tipo
         keys_to_clear = ['transcripcion_temp', 'concepto_extraido', 'valor_extraido', 'categoria_extraida', 
-                        'audio_temp', 'audio_procesado_size', 'archivo_procesado_size', 'nueva_categoria_nombre']
+                        'audio_temp', 'audio_procesado_size', 'foto_temp', 'foto_procesada_size', 'nueva_categoria_nombre']
         for key in keys_to_clear:
             if key in st.session_state:
                 del st.session_state[key]
@@ -624,86 +625,47 @@ def mostrar_gastos(paseo_id, usuario_id):
         st.markdown("""
         <div style='background: rgba(99,102,241,0.1); border-radius: 10px; padding: 0.75rem; margin: 0.5rem 0;'>
             <p style='color: #e2e8f0; font-size: 0.85rem; margin: 0;'>
-                🎤 <strong>Graba</strong> un audio con tu micrófono o <strong>sube</strong> un archivo
+                🎤 <strong>Graba</strong> un audio con tu micrófono describiendo el gasto
             </p>
         </div>
         """, unsafe_allow_html=True)
         
-        audio_tab1, audio_tab2 = st.tabs(["🎙️ Grabar", "📁 Subir Archivo"])
+        # Grabar audio desde el micrófono
+        audio_grabado = st.audio_input("🎙️ Presiona para grabar", key="audio_recorder")
         
-        with audio_tab1:
-            # Grabar audio desde el micrófono
-            audio_grabado = st.audio_input("Presiona para grabar", key="audio_recorder")
+        if audio_grabado:
+            st.audio(audio_grabado)
             
-            if audio_grabado:
-                st.audio(audio_grabado)
-                
-                # Verificar si ya procesamos este audio
-                audio_bytes = audio_grabado.getvalue()
-                audio_size = len(audio_bytes)
-                
-                if st.session_state.get('audio_procesado_size') != audio_size:
-                    # Audio nuevo - procesar automáticamente
-                    with st.spinner("🤖 Procesando audio automáticamente..."):
-                        # Guardar temporalmente
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
-                            tmp_file.write(audio_bytes)
-                            tmp_path = tmp_file.name
-                        
-                        # Transcribir y extraer información
-                        resultado = transcribir_y_extraer(tmp_path, None)
-                        
-                        if resultado:
-                            st.session_state['transcripcion_temp'] = resultado['transcripcion']
-                            st.session_state['concepto_extraido'] = resultado['concepto']
-                            st.session_state['valor_extraido'] = resultado['valor']
-                            st.session_state['categoria_extraida'] = resultado['categoria']
-                            st.session_state['audio_temp'] = audio_bytes
-                            st.session_state['audio_procesado_size'] = audio_size
-                            os.unlink(tmp_path)
-                            st.rerun()
-                        else:
-                            st.error("❌ Error al procesar el audio")
-                            os.unlink(tmp_path)
-                
-                # Guardar audio grabado para usar después
-                archivo_subido = audio_grabado
-        
-        with audio_tab2:
-            # Subir archivo de audio
-            archivo_subido_file = st.file_uploader("Selecciona un archivo de audio", type=["wav", "mp3", "m4a", "ogg"], key="audio_upload")
+            # Verificar si ya procesamos este audio
+            audio_bytes = audio_grabado.getvalue()
+            audio_size = len(audio_bytes)
             
-            if archivo_subido_file:
-                st.audio(archivo_subido_file)
-                archivo_subido = archivo_subido_file
-                
-                # Verificar si ya procesamos este archivo
-                file_bytes = archivo_subido_file.getvalue()
-                file_size = len(file_bytes)
-                
-                if st.session_state.get('archivo_procesado_size') != file_size:
-                    # Archivo nuevo - procesar automáticamente
-                    with st.spinner("🤖 Procesando audio automáticamente..."):
-                        # Guardar temporalmente
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{archivo_subido_file.name.split('.')[-1]}") as tmp_file:
-                            tmp_file.write(file_bytes)
-                            tmp_path = tmp_file.name
-                        
-                        # Transcribir y extraer información
-                        resultado = transcribir_y_extraer(tmp_path, None)
-                        
-                        if resultado:
-                            st.session_state['transcripcion_temp'] = resultado['transcripcion']
-                            st.session_state['concepto_extraido'] = resultado['concepto']
-                            st.session_state['valor_extraido'] = resultado['valor']
-                            st.session_state['categoria_extraida'] = resultado['categoria']
-                            st.session_state['audio_temp'] = file_bytes
-                            st.session_state['archivo_procesado_size'] = file_size
-                            os.unlink(tmp_path)
-                            st.rerun()
-                        else:
-                            st.error("❌ Error al procesar el audio")
-                            os.unlink(tmp_path)
+            if st.session_state.get('audio_procesado_size') != audio_size:
+                # Audio nuevo - procesar automáticamente
+                with st.spinner("🤖 Procesando audio automáticamente..."):
+                    # Guardar temporalmente
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                        tmp_file.write(audio_bytes)
+                        tmp_path = tmp_file.name
+                    
+                    # Transcribir y extraer información
+                    resultado = transcribir_y_extraer(tmp_path, None)
+                    
+                    if resultado:
+                        st.session_state['transcripcion_temp'] = resultado['transcripcion']
+                        st.session_state['concepto_extraido'] = resultado['concepto']
+                        st.session_state['valor_extraido'] = resultado['valor']
+                        st.session_state['categoria_extraida'] = resultado['categoria']
+                        st.session_state['audio_temp'] = audio_bytes
+                        st.session_state['audio_procesado_size'] = audio_size
+                        os.unlink(tmp_path)
+                        st.rerun()
+                    else:
+                        st.error("❌ Error al procesar el audio")
+                        os.unlink(tmp_path)
+            
+            # Guardar audio grabado para usar después
+            archivo_subido = audio_grabado
         
         # Mostrar información extraída si existe
         if 'transcripcion_temp' in st.session_state and st.session_state['transcripcion_temp']:
@@ -729,9 +691,43 @@ def mostrar_gastos(paseo_id, usuario_id):
             """, unsafe_allow_html=True)
     
     elif tipo_gasto == "Foto":
-        archivo_subido = st.file_uploader("📸 Subir foto del gasto", type=["jpg", "jpeg", "png"], key="foto_upload")
-        if archivo_subido:
-            st.image(archivo_subido, width=300)
+        st.markdown("""
+        <div style="background: rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 12px; margin-bottom: 15px;">
+            <p style="margin: 0; font-size: 0.9rem; color: #a7f3d0;">
+                📷 <strong>Toma una foto</strong> de la factura/recibo y extraeremos automáticamente la información
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Cámara para tomar foto
+        foto_camara = st.camera_input("📷 Tomar foto de factura", key="camera_factura")
+        
+        if foto_camara:
+            st.image(foto_camara, width=300)
+            archivo_subido = foto_camara
+            
+            # Verificar si ya procesamos esta foto
+            foto_bytes = foto_camara.getvalue()
+            foto_size = len(foto_bytes)
+            
+            if st.session_state.get('foto_procesada_size') != foto_size:
+                # Foto nueva - procesar automáticamente
+                with st.spinner("🤖 Analizando factura automáticamente..."):
+                    # Convertir a base64
+                    imagen_base64 = base64.b64encode(foto_bytes).decode('utf-8')
+                    
+                    # Analizar con GPT-4 Vision
+                    resultado = analizar_foto_factura(imagen_base64)
+                    
+                    if resultado and (resultado['concepto'] or resultado['valor'] > 0):
+                        st.session_state['concepto_extraido'] = resultado['concepto']
+                        st.session_state['valor_extraido'] = resultado['valor']
+                        st.session_state['foto_temp'] = foto_bytes
+                        st.session_state['foto_procesada_size'] = foto_size
+                        st.success("✅ Factura analizada correctamente")
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ No se pudo extraer información. Ingresa los datos manualmente.")
     
     # Sin categorías - la información del lugar va en el concepto
     categoria_id = None
@@ -806,7 +802,7 @@ def mostrar_gastos(paseo_id, usuario_id):
             # Limpiar estado temporal
             keys_to_clear = ['transcripcion_temp', 'tipo_gasto_anterior', 'audio_temp', 
                            'concepto_extraido', 'valor_extraido', 'categoria_extraida', 'nueva_categoria_nombre',
-                           'audio_procesado_size', 'archivo_procesado_size']
+                           'audio_procesado_size', 'foto_temp', 'foto_procesada_size']
             for key in keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
