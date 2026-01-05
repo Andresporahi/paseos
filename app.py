@@ -882,62 +882,40 @@ def mostrar_gastos(paseo_id, usuario_id):
                 cat_nombre = gasto['categoria_nombre'].split(' ', 1)[-1] if ' ' in gasto['categoria_nombre'] else gasto['categoria_nombre']
                 cat_badge = f"<span style='background: {cat_color}30; color: {cat_color}; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;'>{cat_icono} {cat_nombre}</span>"
             
-            st.markdown(f"""
-            <div class='gasto-card'>
-                <div style='display: flex; justify-content: space-between; align-items: flex-start;'>
-                    <div>
-                        <span class='gasto-concepto'>{tipo_icon} {gasto['concepto']}{cat_badge}</span>
-                        <div class='gasto-meta'>👤 {gasto['usuario_nombre']} • 📅 {fecha_str}</div>
-                    </div>
-                    <div class='gasto-valor'>${gasto['valor']:,.0f}</div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Contenedor del gasto con botones visibles
+            col_gasto, col_acciones = st.columns([4, 1])
             
-            with st.expander("📝 Ver detalles y editar"):
-                col1, col2 = st.columns(2)
-                with col1:
-                    if gasto['tipo_archivo'] and gasto['archivo_path'] and os.path.exists(gasto['archivo_path']):
-                        if gasto['tipo_archivo'] == 'audio':
-                            st.audio(gasto['archivo_path'])
-                        elif gasto['tipo_archivo'] == 'foto':
-                            st.image(gasto['archivo_path'], width=200)
-                        elif gasto['tipo_archivo'] == 'video':
-                            st.video(gasto['archivo_path'])
-                    if gasto['transcripcion']:
-                        st.markdown(f"**🎤 Transcripción:** _{gasto['transcripcion']}_")
-                
-                with col2:
-                    # Divisiones compactas
-                    divisiones = db.get_divisiones_gasto(gasto['id'])
-                    st.markdown("**📊 División:**")
-                    for div in divisiones:
-                        st.markdown(f"""
-                        <div style='display: flex; justify-content: space-between; padding: 0.2rem 0; border-bottom: 1px solid rgba(99,102,241,0.2);'>
-                            <span style='color: #e2e8f0;'>{div['usuario_nombre']}</span>
-                            <span style='color: #fbbf24;'>{div['porcentaje']}% • ${div['monto']:,.0f}</span>
+            with col_gasto:
+                st.markdown(f"""
+                <div class='gasto-card'>
+                    <div style='display: flex; justify-content: space-between; align-items: flex-start;'>
+                        <div>
+                            <span class='gasto-concepto'>{tipo_icon} {gasto['concepto']}{cat_badge}</span>
+                            <div class='gasto-meta'>👤 {gasto['usuario_nombre']} • 📅 {fecha_str}</div>
                         </div>
-                        """, unsafe_allow_html=True)
-                
-                # Editar gasto
-                st.markdown("---")
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button(f"✏️ Editar", key=f"edit_{gasto['id']}"):
-                        st.session_state[f"editing_{gasto['id']}"] = True
-                with col_btn2:
-                    if st.button(f"🗑️ Eliminar", key=f"delete_{gasto['id']}"):
-                        db.eliminar_gasto(gasto['id'])
-                        st.rerun()
-                
-                if st.session_state.get(f"editing_{gasto['id']}", False):
-                    st.markdown("#### ✏️ Editar Gasto")
-                    nuevo_concepto = st.text_input("Concepto", value=gasto['concepto'], key=f"edit_concepto_{gasto['id']}")
+                        <div class='gasto-valor'>${gasto['valor']:,.0f}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_acciones:
+                if st.button("✏️", key=f"edit_{gasto['id']}", help="Editar"):
+                    st.session_state[f"editing_{gasto['id']}"] = not st.session_state.get(f"editing_{gasto['id']}", False)
+                    st.rerun()
+                if st.button("🗑️", key=f"delete_{gasto['id']}", help="Eliminar"):
+                    db.eliminar_gasto(gasto['id'])
+                    st.rerun()
+            
+            # Formulario de edición (visible si está activado)
+            if st.session_state.get(f"editing_{gasto['id']}", False):
+                with st.container():
+                    st.markdown("---")
+                    nuevo_concepto = st.text_input("📝 Concepto", value=gasto['concepto'], key=f"edit_concepto_{gasto['id']}")
                     col_e1, col_e2 = st.columns(2)
                     with col_e1:
-                        nuevo_valor = st.number_input("Valor", value=float(gasto['valor']), key=f"edit_valor_{gasto['id']}")
+                        nuevo_valor = st.number_input("💵 Valor", value=float(gasto['valor']), key=f"edit_valor_{gasto['id']}")
                     with col_e2:
-                        nueva_fecha = st.date_input("Fecha", value=datetime.fromisoformat(gasto['fecha']).date(), key=f"edit_fecha_{gasto['id']}")
+                        nueva_fecha = st.date_input("📅 Fecha", value=datetime.fromisoformat(gasto['fecha']).date(), key=f"edit_fecha_{gasto['id']}")
                     
                     col_save, col_cancel = st.columns(2)
                     with col_save:
@@ -954,6 +932,7 @@ def mostrar_gastos(paseo_id, usuario_id):
                         if st.button("❌ Cancelar", key=f"cancel_{gasto['id']}"):
                             st.session_state[f"editing_{gasto['id']}"] = False
                             st.rerun()
+                    st.markdown("---")
     else:
         st.markdown("""
         <div class='modern-card' style='text-align: center; padding: 2rem;'>
