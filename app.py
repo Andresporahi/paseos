@@ -612,24 +612,78 @@ def mostrar_gastos(paseo_id, usuario_id):
     concepto = st.text_input("Concepto", value=concepto_default, key="concepto_input")
     
     if tipo_gasto == "Audio":
-        archivo_subido = st.file_uploader("Grabar o subir audio", type=["wav", "mp3", "m4a", "ogg"], key="audio_upload")
-        if archivo_subido:
-            st.audio(archivo_subido)
-            if st.button("Transcribir Audio", key="btn_transcribir"):
-                with st.spinner("Transcribiendo audio..."):
-                    # Guardar temporalmente
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{archivo_subido.name.split('.')[-1]}") as tmp_file:
-                        tmp_file.write(archivo_subido.getvalue())
-                        tmp_path = tmp_file.name
-                    
-                    transcripcion_texto = transcribir_audio(tmp_path)
-                    if transcripcion_texto:
-                        st.success("Audio transcrito exitosamente")
-                        st.session_state['transcripcion_temp'] = transcripcion_texto
-                        st.rerun()  # Recargar para actualizar el campo de concepto
-                    else:
-                        st.error("Error al transcribir el audio")
-                    os.unlink(tmp_path)
+        st.markdown("""
+        <div style='background: rgba(99,102,241,0.1); border-radius: 10px; padding: 0.75rem; margin: 0.5rem 0;'>
+            <p style='color: #e2e8f0; font-size: 0.85rem; margin: 0;'>
+                🎤 <strong>Graba</strong> un audio con tu micrófono o <strong>sube</strong> un archivo
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        audio_tab1, audio_tab2 = st.tabs(["🎙️ Grabar", "📁 Subir Archivo"])
+        
+        with audio_tab1:
+            # Grabar audio desde el micrófono
+            audio_grabado = st.audio_input("Presiona para grabar", key="audio_recorder")
+            
+            if audio_grabado:
+                st.audio(audio_grabado)
+                st.success("✅ Audio grabado correctamente")
+                
+                if st.button("🔄 Transcribir Grabación", key="btn_transcribir_grabado"):
+                    with st.spinner("🎯 Transcribiendo audio..."):
+                        # Guardar temporalmente
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+                            tmp_file.write(audio_grabado.getvalue())
+                            tmp_path = tmp_file.name
+                        
+                        transcripcion_texto = transcribir_audio(tmp_path)
+                        if transcripcion_texto:
+                            st.success("✅ Audio transcrito exitosamente")
+                            st.session_state['transcripcion_temp'] = transcripcion_texto
+                            st.session_state['audio_temp'] = audio_grabado.getvalue()
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al transcribir el audio")
+                        os.unlink(tmp_path)
+                
+                # Guardar audio grabado para usar después
+                archivo_subido = audio_grabado
+        
+        with audio_tab2:
+            # Subir archivo de audio
+            archivo_subido_file = st.file_uploader("Selecciona un archivo de audio", type=["wav", "mp3", "m4a", "ogg"], key="audio_upload")
+            
+            if archivo_subido_file:
+                st.audio(archivo_subido_file)
+                archivo_subido = archivo_subido_file
+                
+                if st.button("🔄 Transcribir Audio", key="btn_transcribir_archivo"):
+                    with st.spinner("🎯 Transcribiendo audio..."):
+                        # Guardar temporalmente
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{archivo_subido_file.name.split('.')[-1]}") as tmp_file:
+                            tmp_file.write(archivo_subido_file.getvalue())
+                            tmp_path = tmp_file.name
+                        
+                        transcripcion_texto = transcribir_audio(tmp_path)
+                        if transcripcion_texto:
+                            st.success("✅ Audio transcrito exitosamente")
+                            st.session_state['transcripcion_temp'] = transcripcion_texto
+                            st.session_state['audio_temp'] = archivo_subido_file.getvalue()
+                            st.rerun()
+                        else:
+                            st.error("❌ Error al transcribir el audio")
+                        os.unlink(tmp_path)
+        
+        # Mostrar transcripción si existe
+        if 'transcripcion_temp' in st.session_state and st.session_state['transcripcion_temp']:
+            st.markdown(f"""
+            <div style='background: rgba(16,185,129,0.15); border-left: 4px solid #10b981; 
+                        border-radius: 8px; padding: 0.75rem; margin: 0.5rem 0;'>
+                <p style='color: #94a3b8; font-size: 0.75rem; margin: 0 0 0.25rem 0;'>📝 TRANSCRIPCIÓN:</p>
+                <p style='color: #f8fafc; margin: 0; font-size: 0.95rem;'>{st.session_state['transcripcion_temp']}</p>
+            </div>
+            """, unsafe_allow_html=True)
     
     elif tipo_gasto == "Foto":
         archivo_subido = st.file_uploader("Subir foto", type=["jpg", "jpeg", "png"], key="foto_upload")
@@ -660,15 +714,30 @@ def mostrar_gastos(paseo_id, usuario_id):
     if total_porcentaje != 100:
         st.warning(f"⚠️ El total debe ser 100% (actual: {total_porcentaje}%)")
     
-    if st.button("Guardar Gasto", key="btn_guardar_gasto"):
+    if st.button("💾 Guardar Gasto", key="btn_guardar_gasto"):
         if concepto and valor > 0 and total_porcentaje == 100:
             # Guardar archivo si existe
             archivo_path = None
-            if archivo_subido:
+            tipo_archivo_final = None
+            
+            # Verificar si hay audio grabado en session_state
+            if 'audio_temp' in st.session_state and tipo_gasto == "Audio":
                 os.makedirs("uploads", exist_ok=True)
-                archivo_path = f"uploads/{paseo_id}_{datetime.now().timestamp()}_{archivo_subido.name}"
+                archivo_path = f"uploads/{paseo_id}_{datetime.now().timestamp()}_grabacion.wav"
+                with open(archivo_path, "wb") as f:
+                    f.write(st.session_state['audio_temp'])
+                tipo_archivo_final = "audio"
+            elif archivo_subido:
+                os.makedirs("uploads", exist_ok=True)
+                # Determinar extensión del archivo
+                if hasattr(archivo_subido, 'name'):
+                    ext = archivo_subido.name.split('.')[-1]
+                    archivo_path = f"uploads/{paseo_id}_{datetime.now().timestamp()}_{archivo_subido.name}"
+                else:
+                    archivo_path = f"uploads/{paseo_id}_{datetime.now().timestamp()}_archivo.wav"
                 with open(archivo_path, "wb") as f:
                     f.write(archivo_subido.getvalue())
+                tipo_archivo_final = tipo_gasto.lower()
             
             # Usar transcripción si existe
             transcripcion_final = st.session_state.get('transcripcion_temp', None)
@@ -676,7 +745,7 @@ def mostrar_gastos(paseo_id, usuario_id):
             gasto_id = db.crear_gasto(
                 paseo_id, usuario_id, concepto, valor,
                 datetime.combine(fecha, datetime.min.time()),
-                tipo_gasto.lower() if archivo_subido else None,
+                tipo_archivo_final,
                 archivo_path,
                 transcripcion_final
             )
@@ -697,8 +766,10 @@ def mostrar_gastos(paseo_id, usuario_id):
                 del st.session_state['transcripcion_temp']
             if 'tipo_gasto_anterior' in st.session_state:
                 del st.session_state['tipo_gasto_anterior']
+            if 'audio_temp' in st.session_state:
+                del st.session_state['audio_temp']
             
-            st.success("¡Gasto guardado y dividido exitosamente!")
+            st.success("🎉 ¡Gasto guardado y dividido exitosamente!")
             st.rerun()
         else:
             if not concepto:
