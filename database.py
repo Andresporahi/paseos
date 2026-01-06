@@ -352,7 +352,7 @@ class Database:
     
     def actualizar_gasto(self, gasto_id: int, concepto: str = None, 
                         valor: float = None, fecha: datetime = None) -> bool:
-        """Actualiza un gasto"""
+        """Actualiza un gasto y recalcula las divisiones si cambia el valor"""
         conn = self.get_connection()
         cursor = conn.cursor()
         updates = []
@@ -369,11 +369,21 @@ class Database:
             params.append(fecha)
         
         if not updates:
+            conn.close()
             return False
         
         params.append(gasto_id)
         query = f"UPDATE gastos SET {', '.join(updates)} WHERE id = ?"
         cursor.execute(query, params)
+        
+        # Si cambió el valor, recalcular los montos de las divisiones
+        if valor is not None:
+            cursor.execute("""
+                UPDATE gasto_divisiones 
+                SET monto = ? * (porcentaje / 100.0)
+                WHERE gasto_id = ?
+            """, (valor, gasto_id))
+        
         conn.commit()
         conn.close()
         return True

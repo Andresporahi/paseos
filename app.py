@@ -737,11 +737,15 @@ def mostrar_gastos(paseo_id, usuario_id):
     
     # Checkboxes para seleccionar participantes (todos marcados por defecto)
     participantes_seleccionados = []
-    cols = st.columns(min(len(participantes), 3))
-    for i, participante in enumerate(participantes):
-        with cols[i % 3]:
-            if st.checkbox(participante['nombre'], value=True, key=f"check_{participante['id']}"):
-                participantes_seleccionados.append(participante['id'])
+    if participantes:
+        num_cols = min(len(participantes), 3)
+        cols = st.columns(num_cols)
+        for i, participante in enumerate(participantes):
+            with cols[i % num_cols]:
+                if st.checkbox(participante['nombre'], value=True, key=f"check_{participante['id']}"):
+                    participantes_seleccionados.append(participante['id'])
+    else:
+        st.warning("⚠️ No hay participantes en este paseo. Agrega participantes primero.")
     
     # Calcular división automática en partes iguales
     divisiones = {}
@@ -1020,8 +1024,9 @@ def mostrar_resumen(paseo_id, usuario_id):
         st.markdown("---")
         st.markdown("### 🤖 Análisis Inteligente")
         
-        # Usar cache para no regenerar cada vez
-        cache_key = f"analisis_{paseo_id}_{len(gastos)}"
+        # Usar cache para no regenerar cada vez (incluye suma de valores para detectar ediciones)
+        total_valores = sum(g.get('valor', 0) for g in gastos)
+        cache_key = f"analisis_{paseo_id}_{len(gastos)}_{total_valores}"
         
         if cache_key not in st.session_state:
             with st.spinner("🧠 Analizando gastos con IA..."):
