@@ -420,7 +420,7 @@ class Database:
         return [dict(row) for row in rows]
     
     def calcular_deudas_paseo(self, paseo_id: int) -> List[Dict]:
-        """Calcula las deudas entre usuarios en un paseo"""
+        """Calcula las deudas entre usuarios en un paseo (con neteo de deudas cruzadas)"""
         conn = self.get_connection()
         cursor = conn.cursor()
         
@@ -439,26 +439,80 @@ class Database:
         rows = cursor.fetchall()
         conn.close()
         
-        # Agrupar deudas
-        deudas = {}
+        # Agrupar deudas brutas (antes de netear)
+        deudas_brutas = {}
+        nombres = {}  # Guardar nombres para después
+        
         for row in rows:
-            key = (row['pagador_id'], row['deudor_id'])
-            if key not in deudas:
-                deudas[key] = {
-                    'pagador_id': row['pagador_id'],
-                    'pagador_nombre': row['pagador_nombre'],
-                    'deudor_id': row['deudor_id'],
-                    'deudor_nombre': row['deudor_nombre'],
+            pagador_id = row['pagador_id']
+            deudor_id = row['deudor_id']
+            
+            # Guardar nombres
+            nombres[pagador_id] = row['pagador_nombre']
+            nombres[deudor_id] = row['deudor_nombre']
+            
+            key = (pagador_id, deudor_id)
+            if key not in deudas_brutas:
+                deudas_brutas[key] = {
                     'total': 0,
                     'conceptos': []
                 }
-            deudas[key]['total'] += row['monto']
-            deudas[key]['conceptos'].append({
+            deudas_brutas[key]['total'] += row['monto']
+            deudas_brutas[key]['conceptos'].append({
                 'concepto': row['concepto'],
                 'monto': row['monto']
             })
         
-        return list(deudas.values())
+        # Netear deudas cruzadas: si A debe a B y B debe a A, calcular la diferencia
+        deudas_netas = {}
+        procesados = set()
+        
+        for (pagador_id, deudor_id), data in deudas_brutas.items():
+            # Crear clave normalizada (siempre menor primero)
+            key_normalizada = tuple(sorted([pagador_id, deudor_id]))
+            
+            if key_normalizada in procesados:
+                continue
+            procesados.add(key_normalizada)
+            
+            # Deuda de deudor a pagador
+            deuda_a_b = data['total']
+            conceptos_a_b = data['conceptos']
+            
+            # Buscar deuda inversa (pagador debe a deudor)
+            key_inversa = (deudor_id, pagador_id)
+            deuda_b_a = 0
+            conceptos_b_a = []
+            if key_inversa in deudas_brutas:
+                deuda_b_a = deudas_brutas[key_inversa]['total']
+                conceptos_b_a = deudas_brutas[key_inversa]['conceptos']
+            
+            # Calcular deuda neta
+            neto = deuda_a_b - deuda_b_a
+            
+            if abs(neto) > 0.01:  # Solo si hay deuda significativa
+                if neto > 0:
+                    # deudor le debe a pagador
+                    deudas_netas[(pagador_id, deudor_id)] = {
+                        'pagador_id': pagador_id,
+                        'pagador_nombre': nombres[pagador_id],
+                        'deudor_id': deudor_id,
+                        'deudor_nombre': nombres[deudor_id],
+                        'total': neto,
+                        'conceptos': conceptos_a_b + [{'concepto': f"(-) {c['concepto']}", 'monto': -c['monto']} for c in conceptos_b_a]
+                    }
+                else:
+                    # pagador le debe a deudor (invertir)
+                    deudas_netas[(deudor_id, pagador_id)] = {
+                        'pagador_id': deudor_id,
+                        'pagador_nombre': nombres[deudor_id],
+                        'deudor_id': pagador_id,
+                        'deudor_nombre': nombres[pagador_id],
+                        'total': abs(neto),
+                        'conceptos': conceptos_b_a + [{'concepto': f"(-) {c['concepto']}", 'monto': -c['monto']} for c in conceptos_a_b]
+                    }
+        
+        return list(deudas_netas.values())
     
     def get_resumen_usuario_paseo(self, usuario_id: int, paseo_id: int) -> Dict:
         """Obtiene el resumen de gastos de un usuario en un paseo"""
